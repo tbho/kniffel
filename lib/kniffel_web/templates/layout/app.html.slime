@@ -1,0 +1,49 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="utf-8")
+    meta(http-equiv="X-UA-Compatible" content="IE=edge")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title = gettext("Kniffel")
+    link(rel="stylesheet" href="#{Routes.static_path(@conn, "/css/app.css") }")
+    meta(name="description" content="#{gettext("Kniffel")}")
+    meta(name="author" content="#{gettext("Tobias Hoge")}")
+
+    title
+    link(rel="icon" href="#{Routes.static_path(@conn, "/favicon.png")}" type="image/png")
+    link(rel="manifest" href="#{Routes.static_path(@conn, "/manifest.json")}")
+    meta(name="apple-mobile-web-app-capable" content="yes")
+    meta(name="apple-mobile-web-app-status-bar-style" content="black")
+    meta(name="apple-mobile-web-app-title" content="Klausurarchiv")
+    link(rel="apple-touch-icon" href="/images/icons/192.png")
+    meta(name="theme-color" content="#092135")
+
+  body.has-background-light
+    nav.navbar.has-shadow.is-spaced.has-background-primary(role="navigation" aria-label="main navigation")
+      div.navbar-brand
+        a.navbar-item(href="#{Routes.page_path(@conn, :index)}")
+          / img.image(src="#{Routes.static_path(@conn, "/images/Logo_Fachschaft_Vektor.png")}" alt="" height="70")
+          span.navbar-item.has-text-white.has-text-weight-bold = gettext("Kniffel")
+
+
+    div.container
+      = if !is_nil get_flash(@conn, :info) do
+        section.section
+          article.message.is-success
+            div.message-header
+              p = gettext("Success")
+            div.message-body
+              p = "#{get_flash(@conn, :info) }"
+
+      = if !is_nil get_flash(@conn, :error) do
+        section.section
+          article.message.is-danger
+            div.message-header
+              p = gettext("Error")
+            div.message-body
+              p = "#{get_flash(@conn, :error) }"
+
+      section.section
+        = render @view_module, @view_template, assigns
+
+    script(src="#{Routes.static_path(@conn, "/js/app.js")}")

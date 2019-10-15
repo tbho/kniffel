@@ -1,0 +1,39 @@
+version: "3.4"
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        ENV: dev
+      target: app
+    command: sh -c "mix deps.get && mix ecto.migrate && mix phx.server"
+    depends_on:
+      - db
+      - sync
+    environment:
+      DATABASE_URL: "psql://kniffel:kniffel@db/kniffel"
+      SECRET_KEY_BASE: "5HjSFjyGix751ubR/igyrzbfby3NsOc2Dn4DxldR4hpoqKIa3YEosx3psppajJRw"
+    ports:
+      - "4000:4000"
+
+  assets:
+    build:
+      context: .
+      target: assets
+      args:
+        ENV: dev
+    depends_on:
+      - sync
+    ports:
+      - "4001:4001"
+    command: sh -c "yarn install && yarn run watch"
+
+  db:
+    image: postgres:10.3-alpine
+    environment:
+      POSTGRES_USER: kniffel
+      POSTGRES_PASSWORD: kniffel
+      POSTGRES_DB: kniffel
+    ports:
+      - "15432:5432"
