@@ -4,4 +4,4 @@
 # remember to add this file to your .gitignore.
 use Mix.Config
 
-  config :kniffel, KniffelWeb.Endpoint, server: true
+config :kniffel, KniffelWeb.Endpoint, server: true

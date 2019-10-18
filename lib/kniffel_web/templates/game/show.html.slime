@@ -1,0 +1,31 @@
+
+div.level
+  a.button(href="#{page_path(@conn, :index)}")
+    span.icon
+      i.fas.fa-caret-left
+    span = gettext("Back")
+div.level
+  h2.title.is-2 = @game.id
+
+= if length(@game.users) > 0 do
+  div.box
+    table.table.is-hoverable
+      thead
+        th = gettext("Name")
+        th = gettext("Actions")
+      tbody
+        = for user <- @game.users do
+          tr
+            td
+              span.tag = user.name
+            td
+              div
+                a.button.is-info.is-small(href="#")
+                  p = gettext("Preview")
+                a.button.is-link.is-small(href="#")
+                  p = gettext("Download")
+- else
+  div.box
+    span.icon
+      i.fas.fa-exclamation
+    span =gettext("No users found.")

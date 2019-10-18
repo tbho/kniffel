@@ -1,0 +1,32 @@
+div.level
+  a.button(href="#{page_path(@conn, :index)}")
+    span.icon
+      i.fas.fa-caret-left
+    span Back
+div.level
+  h2.title.is-2 = gettext("Game overview")
+
+div.box
+  p.subtitle.is-5 Filter:
+  = form_for @conn, game_path(@conn, :index), [{:as, :filter}, {:method, :get}], fn (filter_form) ->
+    div.columns
+      div.column.is-narrow
+        h5.subtitle.is-6 = gettext("Full text search")
+        = text_input filter_form, :query, class: "input", type: "text", placeholder: "Name", onchange: "submit()"
+
+div.box
+  = if length(@games) > 0 do
+    table.table
+      thead
+        tr
+          td ID
+      tbody
+        = for game <- @games do
+          tr
+            td
+              a(href="#{game_path(@conn, :show, game.id)}")
+                p.has-text-weight-semibold.has-text-black(style="padding:5") = game.id
+  - else
+    span.icon
+      i.fas.fa-exclamation
+    span = gettext("No games found.")

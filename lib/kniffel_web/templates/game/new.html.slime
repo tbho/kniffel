@@ -1,0 +1,19 @@
+div.level
+  a.button(href="#{page_path(@conn, :index)}")
+    span.icon
+      i.fas.fa-caret-left
+    span =gettext("Back")
+div.level
+  h2.title.is-2 = gettext("Create new game")
+
+div.box
+  = form_for @changeset, @action, fn game_form ->
+    div.columns
+      div.column
+        h5.title.is-5 = gettext("Game")
+        div.select.is-multiple
+          = multiple_select(game_form, :user_ids, Enum.map(@users, &{&1.name, &1.id}), multiple: true, size: length(@users))
+
+    div.columns
+      div.column
+        = submit gettext("Create"), class: "button is-primary"

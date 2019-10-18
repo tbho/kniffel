@@ -17,6 +17,13 @@ defmodule KniffelWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :index
+
+    resources "/users", UserController, only: [:index, :show, :new, :create]
+    resources "/games", GameController, only: [:index, :show, :new, :create] do
+      resources "/scores", ScoreController, only: [:index, :new, :create]
+    end
+
+    resources "/scores", ScoreController, only: [:show]
   end
 
   # Other scopes may use custom stacks.

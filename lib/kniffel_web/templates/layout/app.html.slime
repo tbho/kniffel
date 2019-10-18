@@ -5,13 +5,13 @@ html(lang="en")
     meta(http-equiv="X-UA-Compatible" content="IE=edge")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
     title = gettext("Kniffel")
-    link(rel="stylesheet" href="#{Routes.static_path(@conn, "/css/app.css") }")
+    link(rel="stylesheet" href="#{static_path(@conn, "/css/app.css") }")
     meta(name="description" content="#{gettext("Kniffel")}")
     meta(name="author" content="#{gettext("Tobias Hoge")}")
 
     title
-    link(rel="icon" href="#{Routes.static_path(@conn, "/favicon.png")}" type="image/png")
-    link(rel="manifest" href="#{Routes.static_path(@conn, "/manifest.json")}")
+    link(rel="icon" href="#{static_path(@conn, "/favicon.png")}" type="image/png")
+    link(rel="manifest" href="#{static_path(@conn, "/manifest.json")}")
     meta(name="apple-mobile-web-app-capable" content="yes")
     meta(name="apple-mobile-web-app-status-bar-style" content="black")
     meta(name="apple-mobile-web-app-title" content="Klausurarchiv")
@@ -21,8 +21,8 @@ html(lang="en")
   body.has-background-light
     nav.navbar.has-shadow.is-spaced.has-background-primary(role="navigation" aria-label="main navigation")
       div.navbar-brand
-        a.navbar-item(href="#{Routes.page_path(@conn, :index)}")
-          / img.image(src="#{Routes.static_path(@conn, "/images/Logo_Fachschaft_Vektor.png")}" alt="" height="70")
+        a.navbar-item(href="#{page_path(@conn, :index)}")
+          / img.image(src="#{static_path(@conn, "/images/Logo_Fachschaft_Vektor.png")}" alt="" height="70")
           span.navbar-item.has-text-white.has-text-weight-bold = gettext("Kniffel")
 
 
@@ -46,4 +46,4 @@ html(lang="en")
       section.section
         = render @view_module, @view_template, assigns
 
-    script(src="#{Routes.static_path(@conn, "/js/app.js")}")
+    script(src="#{static_path(@conn, "/js/app.js")}")

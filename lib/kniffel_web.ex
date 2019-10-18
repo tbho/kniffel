@@ -23,7 +23,7 @@ defmodule KniffelWeb do
 
       import Plug.Conn
       import KniffelWeb.Gettext
-      alias KniffelWeb.Router.Helpers, as: Routes
+      import KniffelWeb.Router.Helpers
     end
   end
 
@@ -41,7 +41,7 @@ defmodule KniffelWeb do
 
       import KniffelWeb.ErrorHelpers
       import KniffelWeb.Gettext
-      alias KniffelWeb.Router.Helpers, as: Routes
+      import KniffelWeb.Router.Helpers
     end
   end
 

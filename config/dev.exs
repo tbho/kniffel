@@ -16,7 +16,7 @@ config :kniffel, KniffelWeb.Endpoint,
   debug_errors: true,
   code_reloader: true,
   check_origin: false,
-  watchers: [ ]
+  watchers: []
 
 # ## SSL Support
 #

@@ -1,0 +1,48 @@
+div.level
+  a.button(href="#{page_path(@conn, :index)}")
+    span.icon
+      i.fas.fa-caret-left
+    span Back
+div.level
+  h2.title.is-2 = gettext("Score overview")
+
+/ div.box
+/   p.subtitle.is-5 Filter:
+/   = form_for @conn, score_path(@conn, :index), [{:as, :filter}, {:method, :get}], fn (filter_form) ->
+/     div.columns
+/       div.column.is-narrow
+/         h5.subtitle.is-6 = gettext("Full text search")
+/         = text_input filter_form, :query, class: "input", type: "text", placeholder: "Name", onchange: "submit()"
+
+div.box
+  = if length(@scores) > 0 do
+    table.table
+      thead
+        tr
+          td Name
+      tbody
+        = for score <- @scores do
+          tr
+            td
+              = if score.user do
+                a(href="#{user_path(@conn, :show, score.user.id)}")
+                  p.has-text-weight-semibold.has-text-black(style="padding:5") = score.user.name
+              - else
+                p No user found!
+            td
+              = if score.game do
+                a(href="#{game_path(@conn, :show, score.game.id)}")
+                  p.has-text-weight-semibold.has-text-black(style="padding:5") = score.game.id
+              - else
+                p No user found!
+            td
+              = if score.roll do
+                  p.has-text-weight-semibold.has-text-black(style="padding:5") = score.roll.dices
+              - else
+                p No roll found!
+            td
+              p = score.score_type
+  - else
+    span.icon
+      i.fas.fa-exclamation
+    span = gettext("No scores found.")
