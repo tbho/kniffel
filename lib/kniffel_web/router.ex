@@ -19,11 +19,11 @@ defmodule KniffelWeb.Router do
     get "/", PageController, :index
 
     resources "/users", UserController, only: [:index, :show, :new, :create]
-    resources "/games", GameController, only: [:index, :show, :new, :create] do
-      resources "/scores", ScoreController, only: [:index, :new, :create]
-    end
 
-    resources "/scores", ScoreController, only: [:show]
+    resources "/games", GameController, only: [:index, :show, :new, :create] do
+      resources "/scores", ScoreController, only: [:show, :new, :edit,:update]
+      post "/scores/:id/re_roll", ScoreController, :re_roll
+    end
   end
 
   # Other scopes may use custom stacks.

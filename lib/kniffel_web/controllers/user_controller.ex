@@ -27,13 +27,11 @@ defmodule KniffelWeb.UserController do
   def create(conn, %{"user" => user}) do
     case User.create_user(user) do
       {:ok, user} ->
-
         conn
         |> put_flash(:info, "Erstellt")
         |> redirect(to: user_path(conn, :show, user.id))
 
       {:error, changeset} ->
-
         conn
         |> put_flash(:error, "Fehler beim Erstellen")
         |> render("new.html",
@@ -42,6 +40,4 @@ defmodule KniffelWeb.UserController do
         )
     end
   end
-
-
 end

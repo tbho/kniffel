@@ -10,7 +10,13 @@ defmodule KniffelWeb.GameController do
   end
 
   def show(conn, %{"id" => game_id}) do
-    game = Game.get_game(game_id)
+    game =
+      Game.get_game(game_id)
+      |> Map.update!(:scores, fn scores ->
+        Enum.map(scores, fn score ->
+          Map.update!(score, :roll, &Game.get_roll_history(&1))
+        end)
+      end)
 
     render(conn, "show.html", game: game)
   end
@@ -29,7 +35,6 @@ defmodule KniffelWeb.GameController do
   def create(conn, %{"game" => game}) do
     case Game.create_game(game) do
       {:ok, game} ->
-
         conn
         |> put_flash(:info, "Erstellt")
         |> redirect(to: game_path(conn, :show, game.id))
@@ -46,6 +51,4 @@ defmodule KniffelWeb.GameController do
         )
     end
   end
-
-
 end

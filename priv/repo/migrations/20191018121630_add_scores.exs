@@ -18,6 +18,6 @@ defmodule Kniffel.Repo.Migrations.AddScores do
   def down do
     drop table(:score)
 
-      ScoreType.drop_type()
+    ScoreType.drop_type()
   end
 end

@@ -2,14 +2,14 @@ defmodule Kniffel.User do
   use Ecto.Schema
 
   import Ecto.Changeset
-    import Ecto.Query, warn: false
+  import Ecto.Query, warn: false
 
+  alias Kniffel.{
+    Repo,
+    User
+  }
 
-    alias Kniffel.{
-      Repo, User
-    }
-
-    require Logger
+  require Logger
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -30,7 +30,7 @@ defmodule Kniffel.User do
     |> cast_assoc(:scores, attrs["scores"] || user.scores)
   end
 
-# -----------------------------------------------------------------
+  # -----------------------------------------------------------------
   # -- User
   # -----------------------------------------------------------------
 

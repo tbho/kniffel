@@ -16,7 +16,7 @@ defmodule Kniffel.Game.Roll do
   def changeset(roll, attrs) do
     dices =
       attrs["dices"]
-      |> Enum.map(fn {x, y} ->
+      |> Enum.map(fn x ->
         {x, :rand.uniform(6)}
       end)
       |> Map.new()
@@ -29,6 +29,7 @@ defmodule Kniffel.Game.Roll do
     roll
     |> cast(attrs, [:dices])
     |> put_assoc(:predecessor, attrs["predecessor"])
+
     # |> unique_constraint("predecessor")
   end
 end

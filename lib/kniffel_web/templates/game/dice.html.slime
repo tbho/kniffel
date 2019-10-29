@@ -1,0 +1,3 @@
+div.tags.are-medium
+  = for dice <- @dices do
+    span.tag = elem(dice, 1)

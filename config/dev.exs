@@ -1,5 +1,7 @@
 use Mix.Config
 
+config :logger, level: :info
+
 # Configure your database
 config :kniffel, Kniffel.Repo,
   show_sensitive_data_on_connection_error: true,
