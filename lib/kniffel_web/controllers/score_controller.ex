@@ -2,13 +2,9 @@ defmodule KniffelWeb.ScoreController do
   use KniffelWeb, :controller
 
   alias Kniffel.{Game, User}
-  alias Kniffel.Game.{Roll, Score}
 
   def show(conn, %{"game_id" => game_id, "id" => score_id}) do
-    score =
-      score_id
-      |> Game.get_score()
-      |> Map.update!(:roll, &Game.get_roll_history(&1))
+    score = Game.get_score_with_roll_history(score_id)
 
     if Game.is_allowed_to_roll_again?(score.roll) do
       user = List.first(User.get_users())
@@ -47,10 +43,7 @@ defmodule KniffelWeb.ScoreController do
   end
 
   def edit(conn, %{"game_id" => game_id, "id" => score_id}) do
-    score =
-      score_id
-      |> Game.get_score()
-      |> Map.update!(:roll, &Game.get_roll_history(&1))
+    score = Game.get_score_with_roll_history(score_id)
 
     if score.score_type == :none do
       user = List.first(User.get_users())
@@ -72,10 +65,7 @@ defmodule KniffelWeb.ScoreController do
   end
 
   def re_roll(conn, %{"game_id" => game_id, "id" => score_id, "score" => score_params}) do
-    score =
-      score_id
-      |> Game.get_score()
-      |> Map.update!(:roll, &Game.get_roll_history(&1))
+    score = Game.get_score_with_roll_history(score_id)
 
     if Game.is_allowed_to_roll_again?(score.roll) do
       case Game.update_score_roll_again(score, score_params) do
@@ -87,7 +77,7 @@ defmodule KniffelWeb.ScoreController do
           score =
             score_id
             |> Game.get_score()
-            |> Map.update!(:roll, &Game.get_roll_history(&1))
+            |> Map.update!(:roll, &Game.get_roll_with_history(&1))
 
           conn
           |> put_flash(:error, "Fehler beim Erstellen")
@@ -109,7 +99,7 @@ defmodule KniffelWeb.ScoreController do
 
     if score.score_type == :none do
       case Game.update_score(score, score_params) do
-        {:ok, score} ->
+        {:ok, _} ->
           conn
           |> redirect(to: game_path(conn, :show, game_id))
 
@@ -117,7 +107,7 @@ defmodule KniffelWeb.ScoreController do
           score =
             score_id
             |> Game.get_score()
-            |> Map.update!(:roll, &Game.get_roll_history(&1))
+            |> Map.update!(:roll, &Game.get_roll_with_history(&1))
 
           conn
           |> put_flash(:error, "Fehler beim Erstellen")

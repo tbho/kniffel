@@ -51,14 +51,14 @@ defmodule Kniffel.Game do
     |> Repo.get(id)
   end
 
-  def get_roll_history(nil), do: nil
-  def get_roll_history(%Roll{predecessor: nil} = roll), do: roll
+  def get_roll_with_history(nil), do: nil
+  def get_roll_with_history(%Roll{predecessor: nil} = roll), do: roll
 
-  def get_roll_history(%Roll{predecessor: _} = roll) do
+  def get_roll_with_history(%Roll{predecessor: _} = roll) do
     roll = Repo.preload(roll, :predecessor)
 
     Map.update!(roll, :predecessor, fn list ->
-      get_roll_history(list)
+      get_roll_with_history(list)
     end)
   end
 
@@ -104,7 +104,14 @@ defmodule Kniffel.Game do
   def get_score(id) do
     Score
     |> Repo.get(id)
-    |> Repo.preload([:user, :game, roll: [predecessor: [:predecessor]]])
+    |> Repo.preload([:user, :game])
+  end
+
+  def get_score_with_roll_history(id) do
+    id
+    |> get_score()
+    |> Repo.preload([:roll])
+    |> Map.update!(:roll, &get_roll_with_history(&1))
   end
 
   def create_score(%{"roll" => roll_params} = score_params) do
@@ -181,7 +188,15 @@ defmodule Kniffel.Game do
   def get_game(id) do
     Game
     |> Repo.get(id)
-    |> Repo.preload([:users, scores: [:user, :roll]])
+    |> Repo.preload([:users, scores: [:user]])
+  end
+
+  def get_game_with_roll_history(id) do
+    id
+    |> get_game()
+    |> Map.update!(:scores, fn score ->
+      Enum.map(score, &get_score_with_roll_history(&1.id))
+    end)
   end
 
   def create_game(game_params) do
@@ -236,7 +251,7 @@ defmodule Kniffel.Game do
   end
 
   defp query_score_without_type_for_game_and_user(game_id, user_id) do
-    query = from s in Score,
+    from s in Score,
           where: s.game_id == ^game_id,
           where: s.user_id == ^user_id,
           where: s.score_type == "none"
