@@ -2,6 +2,7 @@ import EctoEnum
 
 defenum(ScoreType, :score_type, [
   :none,
+  :pre,
   :aces,
   :twos,
   :threes,
@@ -9,7 +10,7 @@ defenum(ScoreType, :score_type, [
   :fives,
   :sixes,
   :three_of_a_kind,
-  :four_of_a_ind,
+  :four_of_a_kind,
   :full_house,
   :small_straight,
   :large_straight,

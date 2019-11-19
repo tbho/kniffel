@@ -1,36 +1,69 @@
 defmodule Kniffel.Blockchain do
   @moduledoc """
-  Documentation for BaPoc.
+  Blockchain Module to controll and insert data into it.
   """
 
-  @doc """
-  Hello world.
+  import Ecto.Query, warn: false
 
-  ## Examples
-
-      iex> BaPoc.hello()
-      :world
-
-  """
+  alias Kniffel.Repo
   alias Kniffel.Blockchain.Block
+  alias Kniffel.Blockchain.Transaction
   alias Kniffel.Blockchain.Crypto
 
-  @doc "Create a new blockchain with a zero block"
-  def new do
-    [Crypto.hash!(Block.genesis())]
+  require Logger
+
+  # -----------------------------------------------------------------
+  # -- Block
+  # -----------------------------------------------------------------
+  def get_blockchain() do
+    from(b in Block, order_by: [b.index])
+    |> Repo.all()
   end
 
-  @doc "Insert given data as a new block in the blockchain"
-  def insert(blockchain, data, key) when is_list(blockchain) do
-    %Block{hash: prev, index: index} = List.last(blockchain)
+  def get_block(index) do
+    Block
+    |> Repo.get(index)
+  end
 
-    block =
-      data
-      |> Block.new(prev, index + 1 )
-      |> Crypto.sign!(key)
-      |> Crypto.hash!()
+  def create_new_block(block_params) do
+    %Block{}
+    |> Block.changeset_create(block_params)
+    |> Repo.insert()
+  end
 
-    [block | blockchain]
+  def insert_block(attrs) do
+    %Block{}
+    |> Block.changeset_p2p(attrs)
+    |> Repo.insert()
+  end
+
+  # -----------------------------------------------------------------
+  # -- Transaction
+  # -----------------------------------------------------------------
+  def get_transactions(filter) do
+    from(t in Transaction)
+    |> Repo.all()
+  end
+
+  def get_transaction(index) do
+    Transaction
+    |> Repo.get(index)
+  end
+
+  def create_transaction(transaction_params, user) do
+    %Transaction{}
+    |> Transaction.changeset_create(transaction_params, user)
+    |> Repo.insert()
+  end
+
+  def insert_transaction(transaction_params) do
+    %Transaction{}
+    |> Transaction.changeset_p2p(transaction_params)
+    |> Repo.insert()
+  end
+
+  def get_data(blockchain, filter) when is_list(blockchain) do
+    Enum.filter(blockchain, filter)
   end
 
   @doc "Validate the complete blockchain"

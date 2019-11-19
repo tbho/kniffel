@@ -1,8 +1,10 @@
 
 div.level
-  a.button(href="#{page_path(@conn, :index)}")
+  a.button(href="#{user_path(@conn, :index)}")
     span.icon
       i.fas.fa-caret-left
     span = gettext("Back")
 div.level
-  h2.title.is-2 = @user.name
+  h2.title.is-2 = @user.id
+div.level
+  p = @user.public_key

@@ -21,7 +21,7 @@ html(lang="en")
   body.has-background-light
     nav.navbar.has-shadow.is-spaced.has-background-primary(role="navigation" aria-label="main navigation")
       div.navbar-brand
-        a.navbar-item(href="#{page_path(@conn, :index)}")
+        a.navbar-item(href="#{game_path(@conn, :index)}")
           / img.image(src="#{static_path(@conn, "/images/Logo_Fachschaft_Vektor.png")}" alt="" height="70")
           span.navbar-item.has-text-white.has-text-weight-bold = gettext("Kniffel")
 

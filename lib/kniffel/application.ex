@@ -11,9 +11,10 @@ defmodule Kniffel.Application do
       # Start the Ecto repository
       Kniffel.Repo,
       # Start the endpoint when the application starts
-      KniffelWeb.Endpoint
+      KniffelWeb.Endpoint,
       # Starts a worker by calling: Kniffel.Worker.start_link(arg)
       # {Kniffel.Worker, arg},
+      Kniffel.Scheduler
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

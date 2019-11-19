@@ -1,0 +1,16 @@
+- rolls = get_rolls_to_show(@score)
+
+div.level
+  a.button(href="#{game_path(@conn, :show, @score.game_id)}")
+    span.icon
+      i.fas.fa-caret-left
+    span = gettext("Back")
+div.level
+  h2.title.is-2 = @score.id
+
+div.box
+  div.tags.are-medium
+    = for dice <- rolls do
+      span.tag = elem(dice, 1)
+
+= render("_score_type.html", [rolls: rolls, changeset: @changeset, finish_action: @finish_action, score_types: @score_types])

@@ -38,6 +38,20 @@ config :phoenix, :template_engines,
   slim: PhoenixSlime.Engine,
   slime: PhoenixSlime.Engine
 
+# Quantum Cron Sheduler
+config :kniffel, Kniffel.Scheduler,
+  jobs: [
+    # Every minute
+    # {"* * * * *", {Kniffel.Blockchain, :create_block, []}}
+
+    # # Every 15 minutes
+    # {"*/15 * * * *",   fn -> System.cmd("rm", ["/tmp/tmp_"]) end},
+    # # Runs on 18, 20, 22, 0, 2, 4, 6:
+    # {"0 18-6/2 * * *", fn -> :mnesia.backup('/var/backup/mnesia') end},
+    # # Runs every midnight:
+    # {"@daily",         {Backup, :backup, []}}
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{Mix.env()}.exs"

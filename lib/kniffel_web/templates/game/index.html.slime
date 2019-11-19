@@ -1,9 +1,4 @@
 div.level
-  a.button(href="#{page_path(@conn, :index)}")
-    span.icon
-      i.fas.fa-caret-left
-    span Back
-div.level
   h2.title.is-2 = gettext("Game overview")
 
 / div.box

@@ -1,5 +1,5 @@
 div.level
-  a.button(href="#{page_path(@conn, :index)}")
+  a.button(href="#{game_path(@conn, :index)}")
     span.icon
       i.fas.fa-caret-left
     span Back
@@ -19,13 +19,14 @@ div.box
     table.table
       thead
         tr
-          td Name
+          td ID
       tbody
         = for user <- @users do
           tr
             td
               a(href="#{user_path(@conn, :show, user.id)}")
-                p.has-text-weight-semibold.has-text-black(style="padding:5") = user.name
+                p.has-text-weight-semibold.has-text-black(style="padding:5") = user.id
+
   - else
     span.icon
       i.fas.fa-exclamation

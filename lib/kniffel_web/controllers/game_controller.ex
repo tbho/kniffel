@@ -10,9 +10,10 @@ defmodule KniffelWeb.GameController do
   end
 
   def show(conn, %{"id" => game_id}) do
-    game = Game.get_game_with_roll_history(game_id)
+    game = Game.get_game(game_id, [:users])
+    scores = Game.get_scores()
 
-    render(conn, "show.html", game: game)
+    render(conn, "show.html", game: game, scores: scores)
   end
 
   def new(conn, _params) do

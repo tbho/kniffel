@@ -3,7 +3,6 @@ defmodule KniffelWeb.ScoreView do
 
   alias ScoreType
 
-
   def is_allowed_to_roll_again(roll) do
     is_allowed_to_roll_again(roll, 3)
   end
@@ -15,17 +14,17 @@ defmodule KniffelWeb.ScoreView do
     is_allowed_to_roll_again(roll.predecessor, limit - 1)
   end
 
-  alias Kniffel.Game.Roll
+  alias Kniffel.Game.Score
 
-  def get_rolls_to_show(roll) do
+  def get_rolls_to_show(score) do
     Enum.reduce(["a", "b", "c", "d", "e"], %{}, fn type, result ->
-      Map.put(result, type, find_score_in_history(roll, type))
+      Map.put(result, type, find_score_in_history(score, type))
     end)
   end
 
   def find_score_in_history(nil, _), do: nil
 
-  def find_score_in_history(%Roll{dices: dices} = roll, type) do
+  def find_score_in_history(%Score{dices: dices} = roll, type) do
     case Map.get(dices, type) do
       nil ->
         find_score_in_history(roll.predecessor, type)

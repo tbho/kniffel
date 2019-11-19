@@ -11,7 +11,6 @@ defmodule Kniffel.Game do
   }
 
   alias Kniffel.Game.{
-    Roll,
     Score
   }
 
@@ -21,8 +20,10 @@ defmodule Kniffel.Game do
   @foreign_key_type :binary_id
 
   schema "game" do
-    many_to_many :users, User, join_through: "game_players", on_replace: :delete
+    many_to_many :users, User, join_through: "game_users", on_replace: :delete
     has_many(:scores, Score)
+
+    belongs_to(:transaction, Kniffel.Blockchain.Transaction)
 
     timestamps()
   end
@@ -30,76 +31,21 @@ defmodule Kniffel.Game do
   @doc false
   def changeset(game, attrs) do
     game
-    |> change
+    |> cast(attrs, [])
     |> put_assoc(:users, attrs["users"] || game.users)
     |> put_assoc(:scores, attrs["scores"] || game.scores)
-  end
-
-  # -----------------------------------------------------------------
-  # -- Roll
-  # -----------------------------------------------------------------
-
-  def get_rolls() do
-    Roll
-    |> Repo.all()
-  end
-
-  def get_roll(nil), do: nil
-
-  def get_roll(id) do
-    Roll
-    |> Repo.get(id)
-  end
-
-  def get_roll_with_history(nil), do: nil
-  def get_roll_with_history(%Roll{predecessor: nil} = roll), do: roll
-
-  def get_roll_with_history(%Roll{predecessor: _} = roll) do
-    roll = Repo.preload(roll, :predecessor)
-
-    Map.update!(roll, :predecessor, fn list ->
-      get_roll_with_history(list)
-    end)
-  end
-
-  def create_roll(roll_params \\ %{"dices" => ["a", "b", "c", "d", "e"], "predecessor_id" => nil}) do
-    pre_roll = get_roll(roll_params["predecessor_id"])
-
-    roll_params =
-      roll_params
-      |> Map.drop(["predecessor_id"])
-      |> Map.put("predecessor", pre_roll)
-
-    %Roll{}
-    |> Repo.preload(:predecessor)
-    |> Roll.changeset(roll_params)
-    |> Repo.insert()
-  end
-
-  def update_roll(roll, roll_params) do
-    roll
-    |> Repo.preload(:predecessor)
-    |> Roll.changeset(roll_params)
-    |> Repo.update()
-  end
-
-  def delete_roll(roll) do
-    Repo.delete(roll)
-  end
-
-  def change_roll(roll \\ %Roll{}, attrs \\ %{}) do
-    roll
-    |> Roll.changeset(attrs)
+    |> put_assoc(:transaction, attrs["transaction"] || game.transaction)
   end
 
   # -----------------------------------------------------------------
   # -- Score
   # -----------------------------------------------------------------
-
   def get_scores() do
-    Score
-    |> Repo.all()
+    Repo.all(from s in Score, where: s.score_type != "none")
+    |> Enum.map(&get_score_with_history(&1))
   end
+
+  def get_score(nil), do: nil
 
   def get_score(id) do
     Score
@@ -107,72 +53,74 @@ defmodule Kniffel.Game do
     |> Repo.preload([:user, :game])
   end
 
-  def get_score_with_roll_history(id) do
-    id
-    |> get_score()
-    |> Repo.preload([:roll])
-    |> Map.update!(:roll, &get_roll_with_history(&1))
+  def get_score_with_history(nil), do: nil
+
+  def get_score_with_history(%Score{predecessor: nil} = score), do: score
+
+  def get_score_with_history(%Score{predecessor: _} = score) do
+    score = Repo.preload(score, :predecessor)
+
+    Map.update!(score, :predecessor, fn pre ->
+      get_score_with_history(pre)
+    end)
   end
 
-  def create_score(%{"roll" => roll_params} = score_params) do
-    {:ok, roll} = Game.create_roll(roll_params)
+  def get_score_with_history(id) do
+    id
+    |> get_score
+    |> get_score_with_history
+  end
 
-    create_score(score_params, roll)
+  def create_inital_score(score_params) do
+    score_params
+    |> Map.put("dices_to_roll", ["a", "b", "c", "d", "e"])
+    |> Map.put("predecessor_id", nil)
+    |> Map.put("score_type", :none)
+    |> create_score
   end
 
   def create_score(score_params) do
-    {:ok, roll} = Game.create_roll()
+    pre_score =
+      with %Score{} = score <- get_score(score_params["predecessor_id"]),
+           {:ok, score} <-
+             update_score(score, %{"score_type" => :pre}) do
+        score
+      else
+        nil ->
+          nil
 
-    create_score(score_params, roll)
-  end
+        default ->
+          default
+      end
 
-  defp create_score(score_params, roll) do
-    game = Game.get_game(score_params["game_id"])
+    game = get_game(score_params["game_id"])
     user = User.get_user(score_params["user_id"])
 
     score_params =
       score_params
-      |> Map.drop(["game_id", "user_id"])
+      |> Map.drop(["game_id", "user_id", "predecessor_id"])
       |> Map.put("game", game)
       |> Map.put("user", user)
-      |> Map.put("score_type", :none)
-      |> Map.put("roll", roll)
+      |> Map.put("predecessor", pre_score)
 
     %Score{}
-    |> Repo.preload([:roll, :user, :game])
+    |> Repo.preload([:predecessor, :game, :user, :transaction])
     |> Score.changeset(score_params)
     |> Repo.insert()
   end
 
-  def update_score_roll_again(score, score_params) do
-    game = Game.get_game(score_params["game_id"])
-    user = User.get_user(score_params["user_id"])
-    {:ok, roll} = Game.create_roll(score_params["roll"])
-
-    score_params =
-      score_params
-      |> Map.drop(["game_id", "user_id"])
-      |> Map.put("game", game)
-      |> Map.put("user", user)
-      |> Map.put("roll", roll)
-
-    update_score(score, score_params)
-  end
-
   def update_score(score, score_params) do
     score
-    |> Repo.preload([:roll, :user, :game])
-    |> Score.changeset(score_params)
+    |> Score.changeset_update(score_params)
     |> Repo.update()
   end
 
-  def delete_score(score) do
-    Repo.delete(score)
-  end
-
-  def change_score(score \\ %Score{}, attrs \\ %{}) do
+  def change_score(
+        score \\ %Score{},
+        attrs \\ %{"dices_to_roll" => ["a", "b", "c", "d", "e"], "predecessor_id" => nil}
+      ) do
     score
-    |> Repo.preload([:roll, :user, :game])
+    |> Repo.preload([:predecessor, :user, :game, :transaction])
     |> Score.changeset(attrs)
   end
 
@@ -185,18 +133,10 @@ defmodule Kniffel.Game do
     |> Repo.all()
   end
 
-  def get_game(id) do
+  def get_game(id, preload \\ []) do
     Game
     |> Repo.get(id)
-    |> Repo.preload([:users, scores: [:user]])
-  end
-
-  def get_game_with_roll_history(id) do
-    id
-    |> get_game()
-    |> Map.update!(:scores, fn score ->
-      Enum.map(score, &get_score_with_roll_history(&1.id))
-    end)
+    |> Repo.preload(preload)
   end
 
   def create_game(game_params) do
@@ -208,33 +148,24 @@ defmodule Kniffel.Game do
       |> Map.put("users", users)
 
     %Game{}
-    |> Repo.preload([:users, :scores])
+    |> Repo.preload([:users, :scores, :transaction])
     |> Game.changeset(game_params)
     |> Repo.insert()
   end
 
-  def update_game(game, game_params) do
-    game
-    |> Repo.preload([:users, :scores])
-    |> Game.changeset(game_params)
-    |> Repo.update()
-  end
-
-  def delete_game(game) do
-    Repo.delete(game)
-  end
-
   def change_game(game \\ %Game{}, attrs \\ %{}) do
     game
-    |> Repo.preload([:users, :scores])
+    |> Repo.preload([:users, :scores, :transaction])
     |> Game.changeset(attrs)
   end
 
   def get_score_types_for_game_and_user(game_id, user_id) do
-    query = from s in Score,
-          where: s.game_id == ^game_id,
-          where: s.user_id == ^user_id,
-          select: s.score_type
+    query =
+      from s in Score,
+        where: s.game_id == ^game_id,
+        where: s.user_id == ^user_id,
+        select: s.score_type
+
     Repo.all(query)
   end
 
@@ -252,19 +183,19 @@ defmodule Kniffel.Game do
 
   defp query_score_without_type_for_game_and_user(game_id, user_id) do
     from s in Score,
-          where: s.game_id == ^game_id,
-          where: s.user_id == ^user_id,
-          where: s.score_type == "none"
+      where: s.game_id == ^game_id,
+      where: s.user_id == ^user_id,
+      where: s.score_type == "none"
   end
 
-  def is_allowed_to_roll_again?(roll) do
-    is_allowed_to_roll_again?(roll, 3)
+  def is_allowed_to_roll_again?(score) do
+    is_allowed_to_roll_again?(score, 3)
   end
 
   defp is_allowed_to_roll_again?(_, 0), do: false
   defp is_allowed_to_roll_again?(nil, _), do: true
 
-  defp is_allowed_to_roll_again?(roll, limit) do
-    is_allowed_to_roll_again?(roll.predecessor, limit - 1)
+  defp is_allowed_to_roll_again?(score, limit) do
+    is_allowed_to_roll_again?(score.predecessor, limit - 1)
   end
 end

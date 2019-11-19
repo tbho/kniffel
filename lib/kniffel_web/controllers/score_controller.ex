@@ -3,57 +3,66 @@ defmodule KniffelWeb.ScoreController do
 
   alias Kniffel.{Game, User}
 
-  def show(conn, %{"game_id" => game_id, "id" => score_id}) do
-    score = Game.get_score_with_roll_history(score_id)
+  def new(conn, %{"game_id" => game_id}) do
+    # TODO: change to client user
+    user = List.first(User.get_users())
 
-    if Game.is_allowed_to_roll_again?(score.roll) do
+    if !Game.is_score_without_type_for_game_and_user?(game_id, user.id) do
+      {:ok, score} = Game.create_inital_score(%{"game_id" => game_id, "user_id" => user.id})
+
+      conn
+      |> redirect(to: game_score_path(conn, :re_roll, game_id, score.id))
+    else
+      score = Game.get_score_without_type_for_game_and_user(game_id, user.id)
+
+      conn
+      |> put_flash(:error, "Anderen Wurf vorher beenden")
+      |> redirect(to: game_score_path(conn, :re_roll, game_id, score.id))
+    end
+  end
+
+  def re_roll(conn, %{"game_id" => game_id, "id" => score_id}) do
+    score = Game.get_score_with_history(score_id) |> IO.inspect()
+
+    if Game.is_allowed_to_roll_again?(score) do
       user = List.first(User.get_users())
-      score_types = ScoreType.__enum_map__() -- Game.get_score_types_for_game_and_user(game_id, user.id)
-      score_types = score_types -- [:none]
 
-      render(conn, "show.html", %{
+      score_types =
+        ScoreType.__enum_map__() --
+          Game.get_score_types_for_game_and_user(game_id, user.id)
+
+      score_types = score_types -- [:none, :pre]
+
+      render(conn, "re_roll.html", %{
         score: score,
-        roll_action: game_score_path(conn, :re_roll, game_id, score.id),
-        update_action: game_score_path(conn, :update, game_id, score.id),
+        re_roll_action: game_score_path(conn, :re_roll_score, game_id, score.id),
+        finish_action: game_score_path(conn, :finish_score, game_id, score.id),
         changeset: Game.change_score(),
         score_types: score_types
       })
     else
       conn
       |> put_flash(:error, "Neurollen nicht mehr erlaubt")
-      |> redirect(to: game_score_path(conn, :edit, game_id, score.id))
+      |> redirect(to: game_score_path(conn, :finish, game_id, score.id))
     end
   end
 
-  def new(conn, %{"game_id" => game_id}) do
-    user = List.first(User.get_users())
-
-    if ! Game.is_score_without_type_for_game_and_user?(game_id, user.id) do
-      {:ok, score} = Game.create_score(%{"game_id" => game_id, "user_id" => user.id})
-
-      conn
-      |> redirect(to: game_score_path(conn, :show, game_id, score.id))
-    else
-      score = Game.get_score_without_type_for_game_and_user(game_id, user.id)
-
-      conn
-      |> put_flash(:error, "Anderen Wurf vorher beenden")
-      |> redirect(to: game_score_path(conn, :show, game_id, score.id))
-    end
-  end
-
-  def edit(conn, %{"game_id" => game_id, "id" => score_id}) do
-    score = Game.get_score_with_roll_history(score_id)
+  def finish(conn, %{"game_id" => game_id, "id" => score_id}) do
+    score = Game.get_score_with_history(score_id)
 
     if score.score_type == :none do
       user = List.first(User.get_users())
-      score_types = ScoreType.__enum_map__() -- Game.get_score_types_for_game_and_user(game_id, user.id)
-      score_types = score_types -- [:none]
 
-      render(conn, "update.html", %{
+      score_types =
+        ScoreType.__enum_map__() --
+          Game.get_score_types_for_game_and_user(game_id, user.id)
+
+      score_types = score_types -- [:none, :pre]
+
+      render(conn, "finish.html", %{
         score: score,
-        roll_action: game_score_path(conn, :re_roll, game_id, score.id),
-        update_action: game_score_path(conn, :update, game_id, score.id),
+        roll_action: game_score_path(conn, :re_roll_score, game_id, score.id),
+        finish_action: game_score_path(conn, :finish_score, game_id, score.id),
         changeset: Game.change_score(),
         score_types: score_types
       })
@@ -64,37 +73,51 @@ defmodule KniffelWeb.ScoreController do
     end
   end
 
-  def re_roll(conn, %{"game_id" => game_id, "id" => score_id, "score" => score_params}) do
-    score = Game.get_score_with_roll_history(score_id)
+  def re_roll_score(conn, %{"game_id" => game_id, "id" => score_id, "score" => score_params}) do
+    IO.inspect("_Game.get_score_with_history(score_id)_______________________________________________________")
+    score = Game.get_score_with_history(score_id)
 
-    if Game.is_allowed_to_roll_again?(score.roll) do
-      case Game.update_score_roll_again(score, score_params) do
+    if Game.is_allowed_to_roll_again?(score) do
+      IO.inspect("_Game.create_score(score_params)_______________________________________________________")
+      case Game.create_score(score_params) do
         {:ok, score} ->
-          conn
-          |> redirect(to: game_score_path(conn, :show, game_id, score.id))
+          IO.inspect("_Game.get_score_with_history(score)_______________________________________________________")
+          score = Game.get_score_with_history(score)
+
+          IO.inspect("_Game.is_allowed_to_roll_again?(score)_______________________________________________________")
+          if Game.is_allowed_to_roll_again?(score) do
+            conn
+            |> redirect(to: game_score_path(conn, :re_roll, game_id, score.id))
+          else
+            conn
+            |> redirect(to: game_score_path(conn, :finish, game_id, score.id))
+          end
 
         {:error, changeset} ->
-          score =
-            score_id
-            |> Game.get_score()
-            |> Map.update!(:roll, &Game.get_roll_with_history(&1))
+          user = List.first(User.get_users())
 
-          conn
-          |> put_flash(:error, "Fehler beim Erstellen")
-          |> render("show.html",
+          score_types =
+            ScoreType.__enum_map__() --
+              Game.get_score_types_for_game_and_user(game_id, user.id)
+
+          score_types = score_types -- [:none, :pre]
+
+          render(conn, "re_roll.html", %{
+            score: score,
+            re_roll_action: game_score_path(conn, :re_roll_score, game_id, score.id),
+            finish_action: game_score_path(conn, :finish_score, game_id, score.id),
             changeset: changeset,
-            roll_action: game_score_path(conn, :re_roll, game_id, score.id),
-            update_action: game_score_path(conn, :update, game_id, score.id)
-          )
+            score_types: score_types
+          })
       end
     else
       conn
       |> put_flash(:error, "Neurollen nicht mehr erlaubt")
-      |> redirect(to: game_score_path(conn, :update, game_id, score.id))
+      |> redirect(to: game_score_path(conn, :finish, game_id, score.id))
     end
   end
 
-  def update(conn, %{"game_id" => game_id, "id" => score_id, "score" => score_params}) do
+  def finish_score(conn, %{"game_id" => game_id, "id" => score_id, "score" => score_params}) do
     score = Game.get_score(score_id)
 
     if score.score_type == :none do
@@ -114,7 +137,7 @@ defmodule KniffelWeb.ScoreController do
           |> render("update.html",
             changeset: changeset,
             roll_action: game_score_path(conn, :re_roll, game_id, score.id),
-            update_action: game_score_path(conn, :update, game_id, score.id)
+            update_action: game_score_path(conn, :finish, game_id, score.id)
           )
       end
     else

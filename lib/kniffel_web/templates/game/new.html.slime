@@ -1,5 +1,5 @@
 div.level
-  a.button(href="#{page_path(@conn, :index)}")
+  a.button(href="#{game_path(@conn, :index)}")
     span.icon
       i.fas.fa-caret-left
     span =gettext("Back")
@@ -12,7 +12,8 @@ div.box
       div.column
         h5.title.is-5 = gettext("Game")
         div.select.is-multiple
-          = multiple_select(game_form, :user_ids, Enum.map(@users, &{&1.name, &1.id}), multiple: true, size: length(@users))
+          / First elem in Enum.map is displayed, second is given to backend
+          = multiple_select(game_form, :user_ids, Enum.map(@users, &{&1.id, &1.id}), multiple: true, size: length(@users))
 
     div.columns
       div.column

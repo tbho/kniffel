@@ -1,6 +1,6 @@
 
 div.level
-  a.button(href="#{page_path(@conn, :index)}")
+  a.button(href="#{game_path(@conn, :index)}")
     span.icon
       i.fas.fa-caret-left
     span = gettext("Back")
@@ -14,16 +14,16 @@ div.level
         thead
           th score_type
           = for user <- @game.users do
-            th = user.name
+            th = user.id
         tbody
           = for type <- [:aces, :twos, :threes, :fours, :fives, :sixes] do
             tr
               td = type
               = for user <- @game.users do
                 td
-                  - score = display_score(@game.scores, user.id, type)
+                  - score = display_score(@scores, user.id, type)
                   = if score do
-                    = render("dice.html", dices: get_rolls_to_show(score.roll))
+                    = render("dice.html", dices: get_rolls_to_show(score))
                   - else
                     p No score yet!
           tr.is-selected
@@ -37,9 +37,9 @@ div.level
               td = type
               = for user <- @game.users do
                 td
-                  - score = display_score(@game.scores, user.id, type)
+                  - score = display_score(@scores, user.id, type)
                   = if score do
-                    = render("dice.html", dices: get_rolls_to_show(score.roll))
+                    = render("dice.html", dices: get_rolls_to_show(score))
                   - else
                     p No score yet!
           tr.is-selected

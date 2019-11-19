@@ -7,7 +7,7 @@ defmodule KniffelWeb.GameView do
     end)
   end
 
-  alias Kniffel.Game.Roll
+  alias Kniffel.Game.Score
 
   def get_rolls_to_show(roll) do
     Enum.reduce(["a", "b", "c", "d", "e"], %{}, fn type, result ->
@@ -17,7 +17,7 @@ defmodule KniffelWeb.GameView do
 
   def find_score_in_history(nil, _), do: nil
 
-  def find_score_in_history(%Roll{dices: dices} = roll, type) do
+  def find_score_in_history(%Score{dices: dices} = roll, type) do
     case Map.get(dices, type) do
       nil ->
         find_score_in_history(roll.predecessor, type)
