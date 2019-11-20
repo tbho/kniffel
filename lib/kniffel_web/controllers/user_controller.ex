@@ -20,7 +20,7 @@ defmodule KniffelWeb.UserController do
 
     render(conn, "new.html",
       changeset: user_changeset,
-      action: user_path(conn, :create)
+      action: public_user_path(conn, :create)
     )
   end
 
@@ -36,7 +36,7 @@ defmodule KniffelWeb.UserController do
         |> put_flash(:error, "Fehler beim Erstellen")
         |> render("new.html",
           changeset: changeset,
-          action: user_path(conn, :create)
+          action: public_user_path(conn, :create)
         )
     end
   end

@@ -8,6 +8,8 @@ div.level
 
 div.box
   = form_for @changeset, @action, fn game_form ->
+    = hidden_input(game_form, :user_id, value: @user_id)
+
     div.columns
       div.column
         h5.title.is-5 = gettext("Game")

@@ -11,7 +11,7 @@ defmodule Kniffel.Repo.Migrations.AddGame do
 
     create table("user", primary_key: false) do
       add :id, :string, primary_key: true
-      add :private_key_path, :string, size: 1000
+      add :public_key, :string, size: 1000
 
       timestamps()
     end

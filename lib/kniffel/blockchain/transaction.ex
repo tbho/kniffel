@@ -6,6 +6,7 @@ defmodule Kniffel.Blockchain.Transaction do
 
   alias Kniffel.Game
   alias Kniffel.Game.Score
+  alias Kniffel.User
 
   @sign_fields [:scores, :games]
 
@@ -13,23 +14,25 @@ defmodule Kniffel.Blockchain.Transaction do
   @foreign_key_type :binary_id
 
   schema "transaction" do
-    belongs_to(:user, Kniffel.User)
     field :signature, :string
-    field :timestamp, :utc_datetime, default: DateTime.utc_now()
+    field :data, :string
+    field :timestamp, :utc_datetime, default: DateTime.truncate(DateTime.utc_now(), :second)
 
     has_many(:scores, Score)
     has_many(:games, Game)
+
     belongs_to(:block, Kniffel.Blockchain.Block)
+    belongs_to(:user, Kniffel.User, type: :string)
   end
 
   @doc false
   def changeset_create(transaction, %{"password" => password} = attrs) do
     transaction
-    |> cast(attrs, [:signature])
-    |> put_assoc(:user, attrs["user"] || transaction.scores)
+    |> cast(attrs, [:data])
+    |> put_assoc(:user, attrs["user"] || transaction.user)
+    |> put_assoc(:block, attrs["block"] || transaction.block)
     |> put_assoc(:scores, attrs["scores"] || transaction.scores)
     |> put_assoc(:games, attrs["games"] || transaction.games)
-    |> put_assoc(:block, attrs["block"] || transaction.block)
     |> sign_changeset(password)
   end
 
@@ -44,45 +47,36 @@ defmodule Kniffel.Blockchain.Transaction do
     |> verify_changeset
   end
 
-  def sign_changeset(%Ecto.Changeset{} = changeset, password) do
-    user =
-      changeset
-      |> fetch_field(:user_id)
-      |> User.get_user
-      |> User.preload_private_key(password)
+  def sign_changeset(changeset, password) do
+    with %Ecto.Changeset{} <- changeset,
+         {_, user} <- fetch_field(changeset, :user),
+         {_, data} <- fetch_field(changeset, :data),
+         %User{} = user <- User.preload_private_key(user, password) do
+      IO.inspect(data)
 
-    signature =
-      changeset
-      |> take(@sign_fields)
-      |> Crypto.sign(user.private_key)
+      signature = Crypto.sign(data, user.private_key)
 
-    changeset
-    |> put_change(:signature, signature)
+      changeset
+      |> put_change(:signature, signature)
+    end
   end
 
   @doc "Verify a block using the public key present in it"
   def verify_changeset(%Ecto.Changeset{} = changeset) do
-    signature = fetch_field(changeset, :signature)
-    user =
-      changeset
-      |> fetch_field(:user_id)
-      |> User.get_user
+    with %Ecto.Changeset{} <- changeset,
+         {_, signature} <- fetch_field(changeset, :signature),
+         {_, data} <- fetch_field(changeset, :data),
+         {_, user_id} <- fetch_field(changeset, :user_id),
+         %User{} = user <- User.get_user(user_id) do
+      case Crypto.verify(signature, user.public_key, data) do
+        :ok ->
+          changeset
 
-
-    case Crypto.verify(signature, user.public_key, take(changeset, @sign_fields)) do
-      :ok ->
-        changeset
-
-      :invalid ->
-        add_error(changeset, :hash, "invalid",
-          additional: "hash is not valid for the other fields"
-        )
+        :invalid ->
+          add_error(changeset, :hash, "invalid",
+            additional: "hash is not valid for the other fields"
+          )
+      end
     end
-  end
-
-  defp take(%Ecto.Changeset{} = changeset, fields) do
-    Enum.map(fields, fn field ->
-      {field, fetch_field(changeset, field)}
-    end)
   end
 end

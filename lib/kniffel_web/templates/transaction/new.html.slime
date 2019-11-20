@@ -1,0 +1,18 @@
+div.level
+  h2.title.is-2 = gettext("Persist data to transaction")
+
+div.box
+  = form_for @conn, @action, fn user_form ->
+    div.columns
+      div.column
+        h5.title.is-5 = gettext("User ID")
+        p = @user.id
+
+    div.columns
+      div.column
+        h5.title.is-5 = gettext("Password")
+        = password_input(user_form, :password, class: "input", type: "password")
+
+    div.columns
+      div.column
+        = submit gettext("Create transaction"), class: "button is-primary"

@@ -22,6 +22,7 @@ defmodule Kniffel.Game do
   schema "game" do
     many_to_many :users, User, join_through: "game_users", on_replace: :delete
     has_many(:scores, Score)
+    belongs_to(:user, Kniffel.User, type: :string)
 
     belongs_to(:transaction, Kniffel.Blockchain.Transaction)
 
@@ -32,6 +33,7 @@ defmodule Kniffel.Game do
   def changeset(game, attrs) do
     game
     |> cast(attrs, [])
+    |> put_assoc(:user, attrs["user"] || game.user)
     |> put_assoc(:users, attrs["users"] || game.users)
     |> put_assoc(:scores, attrs["scores"] || game.scores)
     |> put_assoc(:transaction, attrs["transaction"] || game.transaction)
@@ -141,21 +143,24 @@ defmodule Kniffel.Game do
 
   def create_game(game_params) do
     users = Enum.map(game_params["user_ids"] || [], &User.get_user(&1))
+    user = User.get_user(game_params["user_id"])
 
     game_params =
       game_params
       |> Map.drop(["user_ids"])
+      |> Map.drop(["user_id"])
       |> Map.put("users", users)
+      |> Map.put("user", user)
 
     %Game{}
-    |> Repo.preload([:users, :scores, :transaction])
+    |> Repo.preload([:user, :users, :scores, :transaction])
     |> Game.changeset(game_params)
     |> Repo.insert()
   end
 
   def change_game(game \\ %Game{}, attrs \\ %{}) do
     game
-    |> Repo.preload([:users, :scores, :transaction])
+    |> Repo.preload([:user, :users, :scores, :transaction])
     |> Game.changeset(attrs)
   end
 

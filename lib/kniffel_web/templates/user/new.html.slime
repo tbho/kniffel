@@ -1,9 +1,4 @@
 div.level
-  a.button(href="#{user_path(@conn, :index)}")
-    span.icon
-      i.fas.fa-caret-left
-    span =gettext("Back")
-div.level
   h2.title.is-2 = gettext("Create new user")
 
 div.box

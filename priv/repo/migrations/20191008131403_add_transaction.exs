@@ -5,8 +5,7 @@ defmodule Kniffel.Repo.Migrations.AddTransaction do
     create table("transaction", primary_key: false) do
       add :id, :uuid, primary_key: true
       add :timestamp, :utc_datetime, default: fragment("now()")
-      add :games, {:array, :map}
-      add :scores, {:array, :map}
+      add :data, :string, size: 10000
       add :signature, :string
     end
   end

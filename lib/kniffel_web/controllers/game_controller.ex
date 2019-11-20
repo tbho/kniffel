@@ -19,10 +19,12 @@ defmodule KniffelWeb.GameController do
   def new(conn, _params) do
     game_changeset = Game.change_game()
     users = User.get_users()
+    user_id = get_session(conn, :user_id)
 
     render(conn, "new.html",
       changeset: game_changeset,
       users: users,
+      user_id: user_id,
       action: game_path(conn, :create)
     )
   end

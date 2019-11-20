@@ -9,6 +9,7 @@ defmodule Kniffel.Blockchain do
   alias Kniffel.Blockchain.Block
   alias Kniffel.Blockchain.Transaction
   alias Kniffel.Blockchain.Crypto
+  alias Kniffel.{Game, Game.Score}
 
   require Logger
 
@@ -40,9 +41,66 @@ defmodule Kniffel.Blockchain do
   # -----------------------------------------------------------------
   # -- Transaction
   # -----------------------------------------------------------------
-  def get_transactions(filter) do
+  def get_transactions() do
     from(t in Transaction)
     |> Repo.all()
+  end
+
+  # def get_transaction_data(user_id) do
+  #   scores =
+  #     Score
+  #     |> where([s], is_nil(s.transaction_id))
+  #     |> where([s], s.user_id == ^user_id)
+  #     |> where([s], s.score_type != "none")
+  #     |> select([s], %{
+  #       dices: s.dices,
+  #       score_type: s.score_type,
+  #       id: s.id,
+  #       predecessor_id: s.predecessor_id,
+  #       user_id: s.user_id,
+  #       game_id: s.game_id
+  #     })
+  #     |> Repo.all()
+  #     |> Enum.map(fn score ->
+  #       Map.take(score, [:dices, :score_type, :id, :predecessor_id, :user_id, :game_id])
+  #     end)
+
+  #   games =
+  #     Game
+  #     |> preload(:users)
+  #     |> where([g], is_nil(g.transaction_id))
+  #     |> where([g], g.user_id == ^user_id)
+  #     |> Repo.all()
+  #     |> Enum.map(fn game ->
+  #       users =
+  #         Enum.map(game.users, fn user ->
+  #           Map.get(user, :id)
+  #         end)
+
+  #       Map.take(game, [:user_id, :inserted_at, :id])
+  #       |> Map.put(:users, users)
+  #     end)
+
+  #   data = Poison.encode!(%{"scores" => scores, "games" => games})
+  #   %{"data" => data}
+  # end
+
+  def get_transaction_data(user_id) do
+    scores =
+      Score
+      |> where([s], is_nil(s.transaction_id))
+      |> where([s], s.user_id == ^user_id)
+      |> where([s], s.score_type != "none")
+      |> Repo.all()
+
+    games =
+      Game
+      |> preload(:users)
+      |> where([g], is_nil(g.transaction_id))
+      |> where([g], g.user_id == ^user_id)
+      |> Repo.all()
+
+    {games, scores}
   end
 
   def get_transaction(index) do
@@ -51,8 +109,37 @@ defmodule Kniffel.Blockchain do
   end
 
   def create_transaction(transaction_params, user) do
+    {games, scores} = get_transaction_data(user.id)
+
+    score_data =
+      Enum.map(scores, fn score ->
+        Map.take(score, [:dices, :score_type, :id, :predecessor_id, :user_id, :game_id])
+      end)
+
+    game_data =
+      Enum.map(games, fn game ->
+        users =
+          Enum.map(game.users, fn user ->
+            Map.get(user, :id)
+          end)
+
+        Map.take(game, [:user_id, :inserted_at, :id])
+        |> Map.put(:users, users)
+      end)
+
+    data = Poison.encode!(%{"scores" => score_data, "games" => game_data})
+
+    transaction_params =
+      transaction_params
+      |> Map.drop(["user"])
+      |> Map.put("user", user)
+      |> Map.put("data", data)
+      |> Map.put("games", games)
+      |> Map.put("scores", scores)
+
     %Transaction{}
-    |> Transaction.changeset_create(transaction_params, user)
+    |> Repo.preload([:user, :block])
+    |> Transaction.changeset_create(transaction_params)
     |> Repo.insert()
   end
 
@@ -60,10 +147,6 @@ defmodule Kniffel.Blockchain do
     %Transaction{}
     |> Transaction.changeset_p2p(transaction_params)
     |> Repo.insert()
-  end
-
-  def get_data(blockchain, filter) when is_list(blockchain) do
-    Enum.filter(blockchain, filter)
   end
 
   @doc "Validate the complete blockchain"

@@ -29,29 +29,27 @@ defmodule Kniffel.User do
     has_many(:scores, Score)
     has_many(:blocks, Block)
     has_many(:transactions, Transaction)
+    has_many(:sessions, Kniffel.User.Session)
 
     timestamps()
   end
 
   @doc false
   def changeset_gen_id(user, attrs = %{"private_key" => private_key, "password" => password}) do
-
     {:ok, private_key} = ExPublicKey.loads(private_key)
     {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
 
-
     aes_256_key = :crypto.hash(:sha256, System.get_env("AES_KEY"))
 
-    {:ok, {_pw, {init_vec, cipher_text, cipher_tag}}} = ExCrypto.encrypt(aes_256_key, password, private_key_pem)
+    {:ok, {_pw, {init_vec, cipher_text, cipher_tag}}} =
+      ExCrypto.encrypt(aes_256_key, password, private_key_pem)
+
     {:ok, private_key_enc} = ExCrypto.encode_payload(init_vec, cipher_text, cipher_tag)
 
     {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
     {:ok, public_key_pem} = ExPublicKey.pem_encode(public_key)
 
     id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
-
-
-
 
     attrs =
       attrs
@@ -71,7 +69,7 @@ defmodule Kniffel.User do
     |> put_assoc(:scores, attrs["scores"] || user.scores)
     |> put_assoc(:blocks, attrs["blocks"] || user.blocks)
     |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
-    |> IO.inspect
+    |> IO.inspect()
   end
 
   defp validate_password(changeset) do
@@ -108,10 +106,13 @@ defmodule Kniffel.User do
 
   def preload_private_key(user, password) do
     {:ok, {init_vec, cipher_text, cipher_tag}} = ExCrypto.decode_payload(user.private_key_crypt)
+    |> IO.inspect
 
-    private_key_pem = :sha256
-    |> :crypto.hash(System.get_env("AES_KEY"))
-    |> ExCrypto.decrypt(password, init_vec, cipher_text, cipher_tag)
+    private_key_pem =
+      :sha256
+      |> :crypto.hash(System.get_env("AES_KEY"))
+      |> ExCrypto.decrypt(password, init_vec, cipher_text, cipher_tag)
+      |> elem(1)
 
     Map.put(user, :private_key, private_key_pem)
   end
