@@ -105,8 +105,9 @@ defmodule Kniffel.User do
   end
 
   def preload_private_key(user, password) do
-    {:ok, {init_vec, cipher_text, cipher_tag}} = ExCrypto.decode_payload(user.private_key_crypt)
-    |> IO.inspect
+    {:ok, {init_vec, cipher_text, cipher_tag}} =
+      ExCrypto.decode_payload(user.private_key_crypt)
+      |> IO.inspect()
 
     private_key_pem =
       :sha256

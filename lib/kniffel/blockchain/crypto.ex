@@ -10,7 +10,7 @@ defmodule Kniffel.Blockchain.Crypto do
 
   @doc "Sign block data using a private key"
   def sign(data, private_key) do
-    with {:ok, private_key} <- ExPublicKey.loads(private_key |> IO.inspect),
+    with {:ok, private_key} <- ExPublicKey.loads(private_key |> IO.inspect()),
          {:ok, signature} <- ExPublicKey.sign(data, private_key) do
       encode(signature)
     end
