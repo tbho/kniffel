@@ -69,7 +69,6 @@ defmodule Kniffel.User do
     |> put_assoc(:scores, attrs["scores"] || user.scores)
     |> put_assoc(:blocks, attrs["blocks"] || user.blocks)
     |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
-    |> IO.inspect()
   end
 
   defp validate_password(changeset) do
@@ -105,9 +104,7 @@ defmodule Kniffel.User do
   end
 
   def preload_private_key(user, password) do
-    {:ok, {init_vec, cipher_text, cipher_tag}} =
-      ExCrypto.decode_payload(user.private_key_crypt)
-      |> IO.inspect()
+    {:ok, {init_vec, cipher_text, cipher_tag}} = ExCrypto.decode_payload(user.private_key_crypt)
 
     private_key_pem =
       :sha256

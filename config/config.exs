@@ -42,7 +42,7 @@ config :phoenix, :template_engines,
 config :kniffel, Kniffel.Scheduler,
   jobs: [
     # Every minute
-    # {"* * * * *", {Kniffel.Blockchain, :create_block, []}}
+    {"* * * * *", {Kniffel.Blockchain, :create_new_block, []}}
 
     # # Every 15 minutes
     # {"*/15 * * * *",   fn -> System.cmd("rm", ["/tmp/tmp_"]) end},

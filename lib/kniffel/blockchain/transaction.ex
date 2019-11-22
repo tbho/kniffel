@@ -8,7 +8,7 @@ defmodule Kniffel.Blockchain.Transaction do
   alias Kniffel.Game.Score
   alias Kniffel.User
 
-  @sign_fields [:scores, :games]
+  @sign_fields [:data, :timestamp]
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -21,7 +21,12 @@ defmodule Kniffel.Blockchain.Transaction do
     has_many(:scores, Score)
     has_many(:games, Game)
 
-    belongs_to(:block, Kniffel.Blockchain.Block)
+    belongs_to(:block, Kniffel.Blockchain.Block,
+      type: :id,
+      foreign_key: :block_index,
+      references: :index
+    )
+
     belongs_to(:user, Kniffel.User, type: :string)
   end
 
@@ -50,11 +55,13 @@ defmodule Kniffel.Blockchain.Transaction do
   def sign_changeset(changeset, password) do
     with %Ecto.Changeset{} <- changeset,
          {_, user} <- fetch_field(changeset, :user),
-         {_, data} <- fetch_field(changeset, :data),
          %User{} = user <- User.preload_private_key(user, password) do
-      IO.inspect(data)
-
-      signature = Crypto.sign(data, user.private_key)
+      signature =
+        changeset
+        |> take(@sign_fields)
+        |> IO.inspect()
+        |> Poison.encode!()
+        |> Crypto.sign(user.private_key)
 
       changeset
       |> put_change(:signature, signature)
@@ -78,5 +85,14 @@ defmodule Kniffel.Blockchain.Transaction do
           )
       end
     end
+  end
+
+  defp take(%Ecto.Changeset{} = changeset, fields) do
+    Enum.reduce(fields, %{}, fn field, map ->
+      case fetch_field(changeset, field) do
+        {_, data} ->
+          Map.put(map, field, data)
+      end
+    end)
   end
 end

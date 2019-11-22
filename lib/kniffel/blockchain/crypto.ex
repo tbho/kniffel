@@ -4,13 +4,12 @@ defmodule Kniffel.Blockchain.Crypto do
   @doc "Calculate hash of block"
   def hash(data) do
     data
-    |> Poison.encode!()
     |> sha256
   end
 
   @doc "Sign block data using a private key"
   def sign(data, private_key) do
-    with {:ok, private_key} <- ExPublicKey.loads(private_key |> IO.inspect()),
+    with {:ok, private_key} <- ExPublicKey.loads(private_key),
          {:ok, signature} <- ExPublicKey.sign(data, private_key) do
       encode(signature)
     end
@@ -31,24 +30,9 @@ defmodule Kniffel.Blockchain.Crypto do
       else: :invalid
   end
 
-  def load_public_key(public_key_pem) do
-    public_key_pem
-    |> ExPublicKey.loads()
-    |> elem(1)
-  end
-
-  def public_key(private_key) do
-    private_key
-    |> ExPublicKey.public_key_from_private_key()
-    |> elem(1)
-    |> encode
-  end
-
   def private_key() do
     System.get_env("PRIV_KEY_PATH")
     |> ExPublicKey.load()
-    |> elem(1)
-    |> IO.inspect()
   end
 
   # Calculate SHA256 for a binary string

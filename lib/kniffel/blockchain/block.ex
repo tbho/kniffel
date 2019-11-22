@@ -6,62 +6,40 @@ defmodule Kniffel.Blockchain.Block do
   import Ecto.Changeset
 
   # Specify which fields to hash in a block
-  @sign_fields [:index, :transactions, :pre_hash]
-  @hash_fields [:creator, :timestamp, :signature, :proof | @sign_fields]
+  @sign_fields [:index, :data, :pre_hash]
+  @hash_fields [:user_id, :timestamp, :signature, :proof | @sign_fields]
 
   @primary_key {:index, :id, autogenerate: false}
-  @foreign_key_type :id
+  @foreign_key_type :index
 
   schema "block" do
     field :pre_hash, :string
     field :proof, :integer, default: 1
-    field :timestamp, :utc_datetime, default: DateTime.utc_now()
-    belongs_to(:creator, Kniffel.User)
+    field :timestamp, :utc_datetime, default: DateTime.truncate(DateTime.utc_now(), :second)
     field :hash, :string
     field :signature, :string
+    field :data, :string
 
+    belongs_to(:user, Kniffel.User, type: :string)
     has_many(:transactions, Kniffel.Blockchain.Transaction)
   end
 
-  @doc false
-  def changeset_p2p(block, attrs) do
-    block
-    |> cast(attrs, [:pre_hash, :transactions, :index])
-    |> cast(attrs, [:proof, :timestamp, :creator, :hash, :signature])
-    |> put_assoc(:transactions, attrs["transactions"] || block.transactions)
-    |> verify_changeset
-  end
+  # @doc false
+  # def changeset_p2p(block, attrs) do
+  #   block
+  #   |> cast(attrs, [:pre_hash, :transactions, :index])
+  #   |> cast(attrs, [:proof, :timestamp, :creator, :hash, :signature])
+  #   |> put_assoc(:transactions, attrs["transactions"] || block.transactions)
+  #   |> verify_changeset
+  # end
 
   @doc false
   def changeset_create(block, attrs) do
     block
-    |> cast(attrs, [:pre_hash, :transactions, :index])
-    |> put_assoc(:transactions, attrs["transactions"] || block.transactions)
+    |> cast(attrs, [:pre_hash, :data, :index])
+    |> put_assoc(:transactions, attrs.transactions || block.transactions)
     |> sign_changeset()
     |> hash_changeset
-  end
-
-  @doc "Build a new block for given transactions and previous hash"
-  def new(transactions, pre_hash, index) do
-    changeset_create(
-      %Block{},
-      %{
-        transactions: transactions,
-        pre_hash: pre_hash,
-        index: index
-      }
-    )
-  end
-
-  def genesis do
-    changeset_create(
-      %Block{},
-      %{
-        transactions: [],
-        pre_hash: "ZERO_HASH",
-        index: 0
-      }
-    )
   end
 
   def valid?(%Block{} = block) do
@@ -73,70 +51,79 @@ defmodule Kniffel.Blockchain.Block do
   end
 
   def sign_changeset(%Ecto.Changeset{} = changeset) do
-    private_key = Crypto.private_key(System.get_env("PRIV_KEY_PATH"))
+    with {:ok, private_key} <- Crypto.private_key(),
+         {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key),
+         {:ok, rsa_pub_key} <- ExPublicKey.public_key_from_private_key(private_key),
+         user_id <- ExPublicKey.RSAPublicKey.get_fingerprint(rsa_pub_key) do
+      changeset =
+        changeset
+        |> cast(%{user_id: user_id}, [:user_id])
 
-    signature =
+      signature =
+        changeset
+        |> take(@sign_fields)
+        |> Poison.encode!()
+        |> Crypto.sign(private_key_pem)
+
       changeset
-      |> take(@sign_fields)
-      |> Crypto.sign(private_key)
-
-    changeset
-    |> put_change(:signature, signature)
-    |> put_change(:creator, Crypto.public_key(private_key))
+      |> put_change(:signature, signature)
+    end
   end
 
   @doc "Calculate and put the hash in the block"
   def hash_changeset(%Ecto.Changeset{} = changeset) do
-    correct_hash = consensus_changeset(changeset)
+    pow_changeset("", changeset)
+  end
 
+  def pow_changeset(correct_hash = "00" <> _, %Ecto.Changeset{} = changeset) do
     put_change(changeset, :hash, correct_hash)
   end
 
-  def consensus_changeset(%Ecto.Changeset{} = changeset) do
-    poc_changeset("", changeset)
-  end
+  def pow_changeset(wrong_hash, %Ecto.Changeset{} = changeset) do
+    {_, proof} = fetch_field(changeset, :proof)
 
-  def poc_changeset(correct_hash = "0000" <> _, _) do
-    correct_hash
-  end
-
-  def poc_changeset(wrong_hash, %Ecto.Changeset{} = changeset) do
-    proof = fetch_field(changeset, :proof) + 1
+    changeset =
+      changeset
+      |> put_change(:proof, proof + 1)
+      |> put_change(:timestamp, DateTime.truncate(DateTime.utc_now(), :second))
 
     changeset
-    |> put_change(:proof, proof)
-    |> put_change(:timestamp, DateTime.utc_now())
     |> take(@hash_fields)
+    |> Poison.encode!()
     |> Crypto.hash()
-    |> poc_changeset(changeset)
-  end
-
-  @doc "Verify a block using the public key present in it"
-  def verify_changeset(%Ecto.Changeset{} = changeset) do
-    signature = fetch_field(changeset, :signature)
-    creator = fetch_field(changeset, :creator)
-
-    case Crypto.verify(signature, creator, take(changeset, @sign_fields)) do
-      :ok ->
-        changeset
-
-      :invalid ->
-        add_error(changeset, :hash, "invalid",
-          additional: "hash is not valid for the other fields"
-        )
-    end
-  end
-
-  @doc "Verify a block using the public key present in it"
-  def verify_block(%Block{} = block) do
-    Crypto.verify(block.signature, block.creator, Map.take(block, @sign_fields))
+    |> IO.inspect()
+    |> pow_changeset(changeset)
   end
 
   defp take(%Ecto.Changeset{} = changeset, fields) do
-    Enum.map(fields, fn field ->
-      {field, fetch_field(changeset, field)}
+    Enum.reduce(fields, %{}, fn field, map ->
+      case fetch_field(changeset, field) do
+        {_, data} ->
+          Map.put(map, field, data)
+      end
     end)
   end
+
+  # @doc "Verify a block using the public key present in it"
+  # def verify_changeset(%Ecto.Changeset{} = changeset) do
+  #   signature = fetch_field(changeset, :signature)
+  #   creator = fetch_field(changeset, :creator)
+
+  #   case Crypto.verify(signature, creator, take(changeset, @sign_fields)) do
+  #     :ok ->
+  #       changeset
+
+  #     :invalid ->
+  #       add_error(changeset, :hash, "invalid",
+  #         additional: "hash is not valid for the other fields"
+  #       )
+  #   end
+  # end
+
+  # @doc "Verify a block using the public key present in it"
+  # def verify_block(%Block{} = block) do
+  #   Crypto.verify(block.signature, block.creator, Map.take(block, @sign_fields))
+  # end
 
   # def sign!(block, private_key) do
   #   signature =

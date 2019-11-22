@@ -22,7 +22,16 @@ defmodule KniffelWeb.TransactionController do
       |> get_session(:user_id)
       |> User.get_user()
 
-    Blockchain.create_transaction(transaction_params, user)
-    conn
+    case Blockchain.create_transaction(transaction_params, user) do
+      {:ok, _transaction} ->
+        conn
+        |> put_flash(:info, "Transaction created successful.")
+        |> redirect(to: game_path(conn, :index))
+
+      {:error, message} ->
+        conn
+        |> put_flash(:error, message)
+        |> redirect(to: game_path(conn, :index))
+    end
   end
 end

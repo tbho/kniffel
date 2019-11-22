@@ -6,7 +6,7 @@ defmodule Kniffel.Repo.Migrations.AddTransaction do
       add :id, :uuid, primary_key: true
       add :timestamp, :utc_datetime, default: fragment("now()")
       add :data, :string, size: 10000
-      add :signature, :string
+      add :signature, :string, size: 10000
     end
   end
 end

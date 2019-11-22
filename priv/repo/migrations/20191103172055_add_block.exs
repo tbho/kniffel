@@ -7,10 +7,10 @@ defmodule Kniffel.Repo.Migrations.AddBlock do
       add :pre_hash, :string
       add :proof, :integer, default: 1
       add :timestamp, :utc_datetime, default: fragment("now()")
-      add :transactions, {:array, :map}
-      add :creator, references(:user, type: :string)
+      add :user_id, references(:user, type: :string)
       add :hash, :string
-      add :signature, :string
+      add :signature, :string, size: 10000
+      add :data, :string, size: 10000
     end
   end
 end

@@ -8,7 +8,6 @@ defmodule KniffelWeb.ScoreController do
       conn
       |> get_session(:user_id)
       |> User.get_user()
-      |> IO.inspect()
 
     if !Game.is_score_without_type_for_game_and_user?(game_id, user.id) do
       {:ok, score} = Game.create_inital_score(%{"game_id" => game_id, "user_id" => user.id})
@@ -25,14 +24,13 @@ defmodule KniffelWeb.ScoreController do
   end
 
   def re_roll(conn, %{"game_id" => game_id, "id" => score_id}) do
-    score = Game.get_score_with_history(score_id) |> IO.inspect()
+    score = Game.get_score_with_history(score_id)
 
     if Game.is_allowed_to_roll_again?(score) do
       user =
         conn
         |> get_session(:user_id)
         |> User.get_user()
-        |> IO.inspect()
 
       score_types =
         ScoreType.__enum_map__() --
@@ -62,7 +60,6 @@ defmodule KniffelWeb.ScoreController do
         conn
         |> get_session(:user_id)
         |> User.get_user()
-        |> IO.inspect()
 
       score_types =
         ScoreType.__enum_map__() --
@@ -105,7 +102,6 @@ defmodule KniffelWeb.ScoreController do
             conn
             |> get_session(:user_id)
             |> User.get_user()
-            |> IO.inspect()
 
           score_types =
             ScoreType.__enum_map__() --
