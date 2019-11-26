@@ -32,7 +32,6 @@ defmodule Kniffel.Blockchain.Block do
     |> cast(attrs, [:proof, :timestamp, :hash, :signature, :user_id])
     |> put_assoc(:transactions, attrs["transactions"] || block.transactions)
     |> put_assoc(:user, attrs["user"] || block.user)
-
     |> verify_changeset
   end
 
