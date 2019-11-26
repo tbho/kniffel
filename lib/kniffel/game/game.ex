@@ -39,6 +39,12 @@ defmodule Kniffel.Game do
     |> put_assoc(:transaction, attrs["transaction"] || game.transaction)
   end
 
+  @doc false
+  def changeset_p2p(game, attrs) do
+    game
+    |> cast(attrs, [:id, :inserted_at, :user_id])
+  end
+
   # -----------------------------------------------------------------
   # -- Score
   # -----------------------------------------------------------------

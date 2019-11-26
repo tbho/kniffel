@@ -1,4 +1,5 @@
 defmodule Kniffel.Blockchain.Block do
+  alias Kniffel.User
   alias Kniffel.Blockchain.Crypto
   alias Kniffel.Blockchain.Block
 
@@ -24,14 +25,16 @@ defmodule Kniffel.Blockchain.Block do
     has_many(:transactions, Kniffel.Blockchain.Transaction)
   end
 
-  # @doc false
-  # def changeset_p2p(block, attrs) do
-  #   block
-  #   |> cast(attrs, [:pre_hash, :transactions, :index])
-  #   |> cast(attrs, [:proof, :timestamp, :creator, :hash, :signature])
-  #   |> put_assoc(:transactions, attrs["transactions"] || block.transactions)
-  #   |> verify_changeset
-  # end
+  @doc false
+  def changeset_p2p(block, attrs) do
+    block
+    |> cast(attrs, [:pre_hash, :data, :index])
+    |> cast(attrs, [:proof, :timestamp, :hash, :signature, :user_id])
+    |> put_assoc(:transactions, attrs["transactions"] || block.transactions)
+    |> put_assoc(:user, attrs["user"] || block.user)
+
+    |> verify_changeset
+  end
 
   @doc false
   def changeset_create(block, attrs) do
@@ -91,7 +94,6 @@ defmodule Kniffel.Blockchain.Block do
     |> take(@hash_fields)
     |> Poison.encode!()
     |> Crypto.hash()
-    |> IO.inspect()
     |> pow_changeset(changeset)
   end
 
@@ -104,58 +106,55 @@ defmodule Kniffel.Blockchain.Block do
     end)
   end
 
-  # @doc "Verify a block using the public key present in it"
-  # def verify_changeset(%Ecto.Changeset{} = changeset) do
-  #   signature = fetch_field(changeset, :signature)
-  #   creator = fetch_field(changeset, :creator)
+  @doc "Verify a block using the public key present in it"
+  def verify_changeset(%Ecto.Changeset{} = changeset) do
+    with {_, signature} = fetch_field(changeset, :signature),
+         {_, hash} = fetch_field(changeset, :hash),
+         {_, user} <- fetch_field(changeset, :user),
+         %User{} = user <- User.get_user(user.id) do
+      data =
+        changeset
+        |> take(@sign_fields)
+        |> Poison.encode!()
 
-  #   case Crypto.verify(signature, creator, take(changeset, @sign_fields)) do
-  #     :ok ->
-  #       changeset
+      calculated_hash =
+        changeset
+        |> take(@hash_fields)
+        |> Poison.encode!()
+        |> Crypto.hash()
 
-  #     :invalid ->
-  #       add_error(changeset, :hash, "invalid",
-  #         additional: "hash is not valid for the other fields"
-  #       )
-  #   end
-  # end
+      changeset =
+        if hash != calculated_hash do
+          add_error(changeset, :hash, "invalid",
+            additional: "hash is not valid for the other fields"
+          )
+        else
+          changeset
+        end
 
-  # @doc "Verify a block using the public key present in it"
-  # def verify_block(%Block{} = block) do
-  #   Crypto.verify(block.signature, block.creator, Map.take(block, @sign_fields))
-  # end
+      case Crypto.verify(data, user.public_key, signature) do
+        :ok ->
+          changeset
 
-  # def sign!(block, private_key) do
-  #   signature =
-  #   block
-  #   |> Map.take(@sign_fields)
-  #   |> Crypto.sign(private_key)
+        :invalid ->
+          add_error(changeset, :signature, "invalid",
+            additional: "signature is not valid for the other fields"
+          )
+      end
+    end
+  end
 
-  #   block
-  #   |> Map.put(:signature, signature)
-  #   |> Map.put(:creator, Crypto.public_key(private_key))
-  # end
-
-  #  @doc "Calculate and put the hash in the block"
-  #  def hash!(%Block{} = block) do
-  #    correct_hash = consensus(block)
-  #    %{block | hash: correct_hash}
-  #  end
-
-  #  def consensus(%Block{} = block) do
-  #    poc("", block)
-  #  end
-
-  #  def poc(correct_hash = "0000" <> _, _) do
-  #    correct_hash
-  #  end
-
-  #  def poc(wrong_hash, %{proof: proof} = block) do
-  #    block = %{block | proof: proof + 1}
-
-  #    block
-  #    |> Map.take(@hash_fields)
-  #    |> Crypto.hash()
-  #    |> poc(block)
-  #  end
+  def json(%Kniffel.Blockchain.Block{} = block) do
+    %{
+      index: block.index,
+      pre_hash: block.pre_hash,
+      proof: block.proof,
+      data: Poison.decode!(block.data),
+      # data: %{"transactions" => transaction_data},
+      hash: block.hash,
+      signature: block.signature,
+      timestamp: block.timestamp,
+      user_id: block.user_id
+    }
+  end
 end

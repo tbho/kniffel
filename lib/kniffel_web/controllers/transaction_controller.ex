@@ -4,6 +4,16 @@ defmodule KniffelWeb.TransactionController do
   alias Kniffel.Blockchain
   alias Kniffel.User
 
+  def index(conn, _params) do
+    transactions = Blockchain.get_transactions()
+    render(conn, "index.json", transactions: transactions)
+  end
+
+  def show(conn, %{"id" => transaction_id}) do
+    transaction = Blockchain.get_transaction(transaction_id)
+    render(conn, "show.json", transaction: transaction)
+  end
+
   def new(conn, _params) do
     user =
       conn
@@ -16,7 +26,9 @@ defmodule KniffelWeb.TransactionController do
     })
   end
 
-  def create(conn, transaction_params) do
+  def create(conn, attrs), do: create(get_format(conn), conn, attrs)
+
+  def create("html", conn, transaction_params) do
     user =
       conn
       |> get_session(:user_id)
@@ -32,6 +44,16 @@ defmodule KniffelWeb.TransactionController do
         conn
         |> put_flash(:error, message)
         |> redirect(to: game_path(conn, :index))
+    end
+  end
+
+  def create("json", conn, %{"transaction" => transaction_params}) do
+    case Blockchain.insert_transaction(transaction_params) do
+      {:ok, transaction} ->
+        render(conn, "show.json", transaction: transaction)
+
+      {:error, message} ->
+        json(conn, %{error: message})
     end
   end
 end

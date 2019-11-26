@@ -44,10 +44,10 @@ defmodule Kniffel.Blockchain.Transaction do
   @doc false
   def changeset_p2p(transaction, attrs) do
     transaction
-    |> cast(attrs, [:timestamp, :signature])
-    |> put_assoc(:user, attrs["user"] || transaction.scores)
-    |> put_assoc(:scores, attrs["scores"] || transaction.scores)
-    |> put_assoc(:games, attrs["games"] || transaction.games)
+    |> cast(attrs, [:id, :data, :timestamp, :signature])
+    |> put_assoc(:user, attrs["user"] || transaction.user)
+    |> cast_assoc(:scores, with: &Score.changeset_p2p/2)
+    |> cast_assoc(:games, with: &Game.changeset_p2p/2)
     |> put_assoc(:block, attrs["block"] || transaction.block)
     |> verify_changeset
   end
@@ -59,7 +59,6 @@ defmodule Kniffel.Blockchain.Transaction do
       signature =
         changeset
         |> take(@sign_fields)
-        |> IO.inspect()
         |> Poison.encode!()
         |> Crypto.sign(user.private_key)
 
@@ -73,15 +72,20 @@ defmodule Kniffel.Blockchain.Transaction do
     with %Ecto.Changeset{} <- changeset,
          {_, signature} <- fetch_field(changeset, :signature),
          {_, data} <- fetch_field(changeset, :data),
-         {_, user_id} <- fetch_field(changeset, :user_id),
-         %User{} = user <- User.get_user(user_id) do
-      case Crypto.verify(signature, user.public_key, data) do
+         {_, user} <- fetch_field(changeset, :user),
+         %User{} = user <- User.get_user(user.id) do
+      data =
+        changeset
+        |> take(@sign_fields)
+        |> Poison.encode!()
+
+      case Crypto.verify(data, user.public_key, signature) do
         :ok ->
           changeset
 
         :invalid ->
-          add_error(changeset, :hash, "invalid",
-            additional: "hash is not valid for the other fields"
+          add_error(changeset, :signature, "invalid",
+            additional: "signature is not valid for the other fields"
           )
       end
     end
@@ -94,5 +98,17 @@ defmodule Kniffel.Blockchain.Transaction do
           Map.put(map, field, data)
       end
     end)
+  end
+
+  @doc "Verify a block using the public key present in it"
+  def json(%Kniffel.Blockchain.Transaction{} = transaction) do
+    %{
+      id: transaction.id,
+      data: Poison.decode!(transaction.data),
+      signature: transaction.signature,
+      timestamp: transaction.timestamp,
+      user_id: transaction.user_id,
+      block_index: transaction.block_index
+    }
   end
 end

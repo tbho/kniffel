@@ -37,27 +37,27 @@ defmodule KniffelWeb.Authentication do
     end
   end
 
-  # def call(conn, type: :rest) do
-  #   with ["Bearer " <> access_token] <- get_req_header(conn, "authorization"),
-  #        {:ok, session} <- Accounts.verify_session(access_token, nil) do
-  #     assign(conn, :session, session)
-  #   else
-  #     _other ->
-  #       conn
-  #       |> put_status(:unauthorized)
-  #       |> halt()
-  #   end
-  # end
+  def call(conn, type: :api) do
+    with ["Bearer " <> access_token] <- get_req_header(conn, "authorization"),
+         {:ok, session} <- Accounts.verify_session(access_token, nil) do
+      assign(conn, :session, session)
+    else
+      _other ->
+        conn
+        |> put_status(:unauthorized)
+        |> halt()
+    end
+  end
 
-  # def call(conn, type: :browser_or_rest) do
-  #   case get_format(conn) do
-  #     "json" ->
-  #       call(conn, type: :rest)
+  def call(conn, type: :api_or_browser) do
+    case get_format(conn) do
+      "json" ->
+        call(conn, type: :api)
 
-  #     "html" ->
-  #       call(conn, type: :browser)
-  #   end
-  # end
+      "html" ->
+        call(conn, type: :browser)
+    end
+  end
 
   # def call(conn, type: :graphql) do
   #   with ["Bearer " <> access_token] <- get_req_header(conn, "authorization"),

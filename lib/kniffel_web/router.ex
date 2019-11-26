@@ -15,7 +15,7 @@ defmodule KniffelWeb.Router do
     plug :fetch_flash
     plug :protect_from_forgery
     plug :put_secure_browser_headers
-    plug(KniffelWeb.Authentication, type: :browser)
+    plug(KniffelWeb.Authentication, type: :api_or_browser)
   end
 
   pipeline :api do
@@ -36,7 +36,7 @@ defmodule KniffelWeb.Router do
 
     resources("/users", UserController, only: [:index, :show])
 
-    get "games/:id/scores", GameController, :show
+    get "/games/:id/scores", GameController, :show
 
     resources "/games", GameController, only: [:index, :new, :create] do
       resources "/scores", ScoreController, only: [:new]
@@ -49,8 +49,11 @@ defmodule KniffelWeb.Router do
     resources "/transactions", TransactionController, only: [:new, :create]
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", KniffelWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", KniffelWeb do
+    pipe_through :api
+
+    resources "/servers", ServerController, only: [:index, :show, :create]
+    resources "/transactions", TransactionController, only: [:index, :show, :create]
+    resources "/blocks", BlockController, only: [:index, :show, :create]
+  end
 end

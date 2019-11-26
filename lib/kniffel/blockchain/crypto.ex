@@ -16,18 +16,16 @@ defmodule Kniffel.Blockchain.Crypto do
   end
 
   @doc "Verify a block using the public key present in it"
-  def verify(signature, key, data) do
-    sign = decode(signature)
-    public_key = decode(key)
+  def verify(data, public_key_pem, signature) do
+    with {:ok, public_key} <- ExPublicKey.loads(public_key_pem) do
+      sign = decode(signature)
 
-    {:ok, valid} =
-      data
-      |> Poison.encode!()
-      |> ExPublicKey.verify(sign, public_key)
+      {:ok, valid} = ExPublicKey.verify(data, sign, public_key)
 
-    if valid,
-      do: :ok,
-      else: :invalid
+      if valid,
+        do: :ok,
+        else: :invalid
+    end
   end
 
   def private_key() do

@@ -43,6 +43,12 @@ defmodule Kniffel.Game.Score do
   end
 
   @doc false
+  def changeset_p2p(score, attrs) do
+    score
+    |> cast(attrs, [:id, :dices, :score_type, :predecessor_id, :user_id, :game_id])
+  end
+
+  @doc false
   def changeset_update(score, attrs) do
     score
     |> cast(attrs, [:score_type])

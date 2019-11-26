@@ -51,7 +51,8 @@ defmodule Kniffel.MixProject do
       {:rsa_ex, "~> 0.4"},
       {:ex_crypto, "~> 0.10.0"},
       {:quantum, "~> 2.3"},
-      {:timex, "~> 3.0"}
+      {:timex, "~> 3.0"},
+      {:httpoison, "~> 1.6"}
     ]
   end
 

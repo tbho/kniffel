@@ -8,15 +8,14 @@ defmodule Kniffel.Blockchain do
   alias Kniffel.Repo
   alias Kniffel.Blockchain.Block
   alias Kniffel.Blockchain.Transaction
-  alias Kniffel.Blockchain.Crypto
-  alias Kniffel.{Game, Game.Score}
+  alias Kniffel.{Game, Game.Score, User}
 
   require Logger
 
   # -----------------------------------------------------------------
   # -- Block
   # -----------------------------------------------------------------
-  def get_blockchain() do
+  def get_blocks() do
     Block
     |> order_by(desc: :index)
     |> Repo.all()
@@ -38,7 +37,6 @@ defmodule Kniffel.Blockchain do
     %Block{}
     |> Repo.preload([:user])
     |> Block.changeset_create(block_params)
-    |> IO.inspect()
     |> Repo.insert()
   end
 
@@ -61,7 +59,7 @@ defmodule Kniffel.Blockchain do
     if length(transactions) > 0 do
       transaction_data =
         Enum.map(transactions, fn transaction ->
-          Map.take(transaction, [:id ,:signature, :timestamp, :user_id, :game_id])
+          Map.take(transaction, [:id, :signature, :timestamp, :user_id, :game_id, :data])
         end)
 
       data = Poison.encode!(%{"transactions" => transaction_data})
@@ -78,18 +76,39 @@ defmodule Kniffel.Blockchain do
       %Block{}
       |> Repo.preload([:user])
       |> Block.changeset_create(block_params)
-      |> IO.inspect()
       |> Repo.insert()
     else
       {:error, :no_transactions_for_block}
     end
   end
 
-  # def insert_block(attrs) do
-  #   %Block{}
-  #   |> Block.changeset_p2p(attrs)
-  #   |> Repo.insert()
-  # end
+  def insert_block(%{"user_id" => user_id, "data" => data} = block_params) do
+    data = Poison.decode!(data)
+
+    user = User.get_user(user_id)
+
+    transactions =
+      Enum.map(data["transactions"], fn transaction_params ->
+        transaction = get_transaction(transaction_params["id"])
+
+        if transaction.signature == transaction_params["signature"] do
+          transaction
+        else
+          nil
+        end
+      end)
+
+    block_params =
+      block_params
+      |> Map.drop(["transactions"])
+      |> Map.put("user", user)
+      |> Map.put("transactions", transactions)
+
+    %Block{}
+    |> Repo.preload([:user, :transactions])
+    |> Block.changeset_p2p(block_params)
+    |> Repo.insert()
+  end
 
   # -----------------------------------------------------------------
   # -- Transaction
@@ -191,20 +210,53 @@ defmodule Kniffel.Blockchain do
         |> Map.put("games", games)
         |> Map.put("scores", scores)
 
-      %Transaction{}
-      |> Repo.preload([:user, :block])
-      |> Transaction.changeset_create(transaction_params)
-      |> Repo.insert()
+      transaction =
+        %Transaction{}
+        |> Repo.preload([:user, :block])
+        |> Transaction.changeset_create(transaction_params)
+        |> Repo.insert()
+
+      servers = Server.get_servers()
+
+      Enum.map(servers, fn server ->
+        HTTPoison.post(server <> "/transactions", Poison.encode!(Transaction.json(transaction)), [
+          {"Content-Type", "application/json"}
+        ])
+      end)
     else
       {:error, :no_data_for_transaction}
     end
   end
 
-  # def insert_transaction(transaction_params) do
-  #   %Transaction{}
-  #   |> Transaction.changeset_p2p(transaction_params)
-  #   |> Repo.insert()
-  # end
+  def insert_transaction(%{"user_id" => user_id, "data" => data} = transaction_params) do
+    data = Poison.decode!(data)
+
+    user = User.get_user(user_id)
+
+    block_index = transaction_params["block_index"] || nil
+
+    block =
+      case block_index do
+        nil ->
+          nil
+
+        block_index ->
+          get_block(block_index)
+      end
+
+    transaction_params =
+      transaction_params
+      |> Map.drop(["user_id", "block_index"])
+      |> Map.put("user", user)
+      |> Map.put("block", block)
+      |> Map.put("scores", data["scores"])
+      |> Map.put("games", data["games"])
+
+    %Transaction{}
+    |> Repo.preload([:user, :block])
+    |> Transaction.changeset_p2p(transaction_params)
+    |> Repo.insert()
+  end
 
   @doc "Validate the complete blockchain"
   def valid?(blockchain) when is_list(blockchain) do
