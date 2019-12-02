@@ -11,6 +11,7 @@ config :kniffel,
   ecto_repos: [Kniffel.Repo]
 
 database_url = System.get_env("DATABASE_URL")
+IO.inspect database_url
 
 config :kniffel, Kniffel.Repo,
   url: database_url,
