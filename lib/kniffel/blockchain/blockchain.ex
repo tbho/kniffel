@@ -123,45 +123,6 @@ defmodule Kniffel.Blockchain do
     |> Repo.get(index)
   end
 
-  # def get_transaction_data(user_id) do
-  #   scores =
-  #     Score
-  #     |> where([s], is_nil(s.transaction_id))
-  #     |> where([s], s.user_id == ^user_id)
-  #     |> where([s], s.score_type != "none")
-  #     |> select([s], %{
-  #       dices: s.dices,
-  #       score_type: s.score_type,
-  #       id: s.id,
-  #       predecessor_id: s.predecessor_id,
-  #       user_id: s.user_id,
-  #       game_id: s.game_id
-  #     })
-  #     |> Repo.all()
-  #     |> Enum.map(fn score ->
-  #       Map.take(score, [:dices, :score_type, :id, :predecessor_id, :user_id, :game_id])
-  #     end)
-
-  #   games =
-  #     Game
-  #     |> preload(:users)
-  #     |> where([g], is_nil(g.transaction_id))
-  #     |> where([g], g.user_id == ^user_id)
-  #     |> Repo.all()
-  #     |> Enum.map(fn game ->
-  #       users =
-  #         Enum.map(game.users, fn user ->
-  #           Map.get(user, :id)
-  #         end)
-
-  #       Map.take(game, [:user_id, :inserted_at, :id])
-  #       |> Map.put(:users, users)
-  #     end)
-
-  #   data = Poison.encode!(%{"scores" => scores, "games" => games})
-  #   %{"data" => data}
-  # end
-
   def get_transaction_data(user_id) do
     scores =
       Score
