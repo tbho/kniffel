@@ -33,7 +33,7 @@ defmodule Kniffel.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.4.10"},
+      {:phoenix, "~> 1.4.11"},
       {:phoenix_pubsub, "~> 1.1"},
       {:argon2_elixir, "~> 1.2"},
       {:comeonin, "~> 4.0"},
@@ -52,7 +52,8 @@ defmodule Kniffel.MixProject do
       {:ex_crypto, "~> 0.10.0"},
       {:quantum, "~> 2.3"},
       {:timex, "~> 3.0"},
-      {:httpoison, "~> 1.6"}
+      {:httpoison, "~> 1.6"},
+      {:distillery, "~> 2.0"},
     ]
   end
 

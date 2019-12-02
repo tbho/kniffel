@@ -80,7 +80,7 @@ ENV LC_ALL en_US.UTF-8
 
 WORKDIR /app
 
-COPY --from=app /app/_build/prod/rel/klausurarchiv ./
+COPY --from=app /app/_build/prod/rel/kniffel ./
 
-ENTRYPOINT ["./bin/klausurarchiv"]
+ENTRYPOINT ["./bin/kniffel"]
 CMD ["foreground"]
