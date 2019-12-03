@@ -53,7 +53,8 @@ config :kniffel, KniffelWeb.Endpoint,
       ~r{web/views/.*(ex)$},
       ~r{lib/APP_web/templates/.*(eex|slim|slime)$}
     ]
-  ]
+  ],
+  secret_key_base: "5HjSFjyGix751ubR/igyrzbfby3NsOc2Dn4DxldR4hpoqKIa3YEosx3psppajJRw"
 
 config :slime, :keep_lines, true
 

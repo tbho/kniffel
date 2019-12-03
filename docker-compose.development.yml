@@ -15,7 +15,6 @@ services:
      - ./kniffel.key:/kniffel.key
     environment:
       DATABASE_URL: "psql://kniffel:kniffel@db/kniffel"
-      SECRET_KEY_BASE: "5HjSFjyGix751ubR/igyrzbfby3NsOc2Dn4DxldR4hpoqKIa3YEosx3psppajJRw"
       PRIV_KEY_PATH: "/kniffel.key"
       AES_KEY: "test"
     ports:
