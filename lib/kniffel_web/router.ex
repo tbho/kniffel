@@ -54,6 +54,7 @@ defmodule KniffelWeb.Router do
 
     get "/servers/this", ServerController, :this
     resources "/servers", ServerController, only: [:index, :show, :create]
+    resources "/users", UserController, only: [:index, :show, :create]
     resources "/transactions", TransactionController, only: [:index, :show, :create]
     resources "/blocks", BlockController, only: [:index, :show, :create]
   end

@@ -10,11 +10,7 @@ defmodule KniffelWeb.ServerController do
   end
 
   def this(conn, _params) do
-    {:ok, private_key} = Crypto.private_key
-    {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
-    server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
-
-    server = Server.get_server(server_id)
+    server = Server.get_this_server
     render(conn, "show.json", server: server)
   end
 

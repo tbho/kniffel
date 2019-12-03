@@ -47,9 +47,20 @@ defmodule Kniffel.Server do
     Repo.get(Server, id)
   end
 
-  def create_server(server_params) do
+  def get_this_server() do
+    {:ok, private_key} = Crypto.private_key
+    {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
+    server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+
+    Server.get_server(server_id)
+  end
+
+  def create_server(%{"url" => url} = server_params) do
+    {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
+    {:ok, server} = Poison.decode(response.body)
+
     %Server{}
-    |> Server.changeset(server_params)
+    |> Server.changeset(server["server"])
     |> Repo.insert()
   end
 

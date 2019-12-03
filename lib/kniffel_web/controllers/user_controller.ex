@@ -3,16 +3,30 @@ defmodule KniffelWeb.UserController do
 
   alias Kniffel.User
 
-  def index(conn, _params) do
+  def index(conn, attrs), do: index(get_format(conn), conn, attrs)
+
+  def index("html", conn, _params) do
     users = User.get_users()
 
     render(conn, "index.html", users: users)
   end
 
-  def show(conn, %{"id" => user_id}) do
+  def index("json", conn, _params) do
+    users = User.get_users()
+    render(conn, "index.json", users: users)
+  end
+
+  def show(conn, attrs), do: show(get_format(conn), conn, attrs)
+
+  def show("html", conn, %{"id" => user_id}) do
     user = User.get_user(user_id)
 
     render(conn, "show.html", user: user)
+  end
+
+  def show("json", conn, %{"id" => user_id}) do
+    user = User.get_user(user_id)
+    render(conn, "show.json", user: user)
   end
 
   def new(conn, _params) do
@@ -24,7 +38,9 @@ defmodule KniffelWeb.UserController do
     )
   end
 
-  def create(conn, %{"user" => user}) do
+  def create(conn, attrs), do: create(get_format(conn), conn, attrs)
+
+  def create("html", conn, %{"user" => user}) do
     case User.create_user(user) do
       {:ok, user} ->
         conn
@@ -38,6 +54,16 @@ defmodule KniffelWeb.UserController do
           changeset: changeset,
           action: public_user_path(conn, :create)
         )
+    end
+  end
+
+  def create("json", conn, %{"user" => user}) do
+    case User.create_user_p2p(user) do
+      {:ok, user} ->
+        render(conn, "show.json", user: user)
+
+      {:error, message} ->
+        json(conn, %{error: message})
     end
   end
 end

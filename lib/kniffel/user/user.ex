@@ -33,7 +33,7 @@ defmodule Kniffel.User do
   end
 
   @doc false
-  def changeset_gen_id(user, attrs = %{"private_key" => private_key, "password" => password}) do
+  def changeset_gen_id(user, %{"private_key" => private_key, "password" => password} = attrs) do
     {:ok, private_key} = ExPublicKey.loads(private_key)
     {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
 
@@ -63,6 +63,23 @@ defmodule Kniffel.User do
     user
     |> cast(attrs, [:id, :password, :private_key_crypt, :private_key, :public_key])
     |> validate_password
+    |> put_assoc(:games, attrs["games"] || user.games)
+    |> put_assoc(:scores, attrs["scores"] || user.scores)
+    |> put_assoc(:blocks, attrs["blocks"] || user.blocks)
+    |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
+  end
+
+  @doc false
+  def changeset_p2p(user,%{"public_key" => public_key} = attrs) do
+    {:ok, public_key} = ExPublicKey.loads(public_key)
+    id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+
+    attrs =
+      attrs
+      |> Map.put("id", id)
+
+    user
+    |> cast(attrs, [:id, :public_key])
     |> put_assoc(:games, attrs["games"] || user.games)
     |> put_assoc(:scores, attrs["scores"] || user.scores)
     |> put_assoc(:blocks, attrs["blocks"] || user.blocks)
@@ -118,11 +135,33 @@ defmodule Kniffel.User do
     |> Repo.preload([:games, :scores, :blocks, :transactions])
     |> User.changeset_gen_id(user_params)
     |> Repo.insert()
+
+    servers = Server.get_servers() -- Server.get_this_server()
+
+    Enum.map(servers, fn server ->
+      HTTPoison.post(server <> "/api/users", Poison.encode!(User.json(user)), [
+        {"Content-Type", "application/json"}
+      ])
+  end
+
+  def create_user_p2p(user_params) do
+    %User{}
+    |> Repo.preload([:games, :scores, :blocks, :transactions])
+    |> User.changeset_p2p(user_params)
+    |> Repo.insert()
   end
 
   def change_user(user \\ %User{}, user_params \\ %{}) do
     user
     |> Repo.preload([:games, :scores, :blocks, :transactions])
     |> User.changeset(user_params)
+  end
+
+  @doc "Verify a block using the public key present in it"
+  def json(%Kniffel.User{} = user) do
+    %{
+      id: user.id,
+      public_key: user.public_key
+    }
   end
 end

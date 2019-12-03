@@ -175,7 +175,7 @@ defmodule Kniffel.Blockchain do
         |> Transaction.changeset_create(transaction_params)
         |> Repo.insert()
 
-      servers = Server.get_servers()
+      servers = Server.get_servers() -- Server.get_this_server()
 
       Enum.map(servers, fn server ->
         HTTPoison.post(server <> "/transactions", Poison.encode!(Transaction.json(transaction)), [
