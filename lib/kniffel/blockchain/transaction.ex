@@ -46,8 +46,8 @@ defmodule Kniffel.Blockchain.Transaction do
     transaction
     |> cast(attrs, [:id, :data, :timestamp, :signature])
     |> put_assoc(:user, attrs["user"] || transaction.user)
-    |> cast_assoc(:scores, with: &Score.changeset_p2p/2)
     |> cast_assoc(:games, with: &Game.changeset_p2p/2)
+    |> cast_assoc(:scores, with: &Score.changeset_p2p/2)
     |> put_assoc(:block, attrs["block"] || transaction.block)
     |> verify_changeset
   end
@@ -104,6 +104,18 @@ defmodule Kniffel.Blockchain.Transaction do
     %{
       id: transaction.id,
       data: Poison.decode!(transaction.data),
+      signature: transaction.signature,
+      timestamp: transaction.timestamp,
+      user_id: transaction.user_id,
+      block_index: transaction.block_index
+    }
+  end
+
+  @doc "Verify a block using the public key present in it"
+  def json_encode(%Kniffel.Blockchain.Transaction{} = transaction) do
+    %{
+      id: transaction.id,
+      data: transaction.data,
       signature: transaction.signature,
       timestamp: transaction.timestamp,
       user_id: transaction.user_id,

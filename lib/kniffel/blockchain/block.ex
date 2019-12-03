@@ -156,4 +156,17 @@ defmodule Kniffel.Blockchain.Block do
       server_id: block.server_id
     }
   end
+
+  def json_encode(%Kniffel.Blockchain.Block{} = block) do
+    %{
+      index: block.index,
+      pre_hash: block.pre_hash,
+      proof: block.proof,
+      data: block.data,
+      hash: block.hash,
+      signature: block.signature,
+      timestamp: block.timestamp,
+      server_id: block.server_id
+    }
+  end
 end

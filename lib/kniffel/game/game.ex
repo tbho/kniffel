@@ -41,6 +41,7 @@ defmodule Kniffel.Game do
   def changeset_p2p(game, attrs) do
     game
     |> cast(attrs, [:id, :inserted_at, :user_id])
+    |> put_assoc(:users, attrs["users"] || game.users)
   end
 
   # -----------------------------------------------------------------

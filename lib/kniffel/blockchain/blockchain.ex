@@ -111,7 +111,7 @@ defmodule Kniffel.Blockchain do
     servers = Server.get_others_servers()
 
     Enum.map(servers, fn server ->
-      HTTPoison.post(server.url <> "/api/blocks", Poison.encode!(%{block: Block.json(block)}), [
+      HTTPoison.post(server.url <> "/api/blocks", Poison.encode!(%{block: Block.json_encode(block)}), [
         {"Content-Type", "application/json"}
       ])
     end)
@@ -191,7 +191,7 @@ defmodule Kniffel.Blockchain do
       Enum.map(servers, fn server ->
         HTTPoison.post(
           server.url <> "/api/transactions",
-          Poison.encode!(%{transaction: Transaction.json(user)}),
+          Poison.encode!(%{transaction: Transaction.json_encode(transaction)}),
           [
             {"Content-Type", "application/json"}
           ]
@@ -208,6 +208,12 @@ defmodule Kniffel.Blockchain do
     data = Poison.decode!(data)
 
     user = User.get_user(user_id)
+
+    games = Enum.map(data["games"], fn game ->
+      users = Enum.map(game["users"] || [], &User.get_user(&1))
+      Map.put(game, "users", users)
+    end)
+
 
     block_index = transaction_params["block_index"] || nil
 
@@ -226,7 +232,7 @@ defmodule Kniffel.Blockchain do
       |> Map.put("user", user)
       |> Map.put("block", block)
       |> Map.put("scores", data["scores"])
-      |> Map.put("games", data["games"])
+      |> Map.put("games", games)
 
     %Transaction{}
     |> Repo.preload([:user, :block])
