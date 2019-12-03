@@ -33,7 +33,7 @@ defmodule Kniffel.Blockchain do
     }
 
     %Block{}
-    |> Repo.preload([:user])
+    |> Repo.preload([:server])
     |> Block.changeset_create(block_params)
     |> Repo.insert()
   end
@@ -57,7 +57,7 @@ defmodule Kniffel.Blockchain do
     if length(transactions) > 0 do
       transaction_data =
         Enum.map(transactions, fn transaction ->
-          Map.take(transaction, [:id, :signature, :timestamp, :user_id, :game_id, :data])
+          Map.take(transaction, [:id, :signature, :timestamp, :server_id, :game_id, :data])
         end)
 
       data = Poison.encode!(%{"transactions" => transaction_data})
@@ -72,7 +72,7 @@ defmodule Kniffel.Blockchain do
       }
 
       %Block{}
-      |> Repo.preload([:user])
+      |> Repo.preload([:server])
       |> Block.changeset_create(block_params)
       |> Repo.insert()
     else
@@ -80,10 +80,10 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  def insert_block(%{"user_id" => user_id, "data" => data} = block_params) do
+  def insert_block(%{"server_id" => server_id, "data" => data} = block_params) do
     data = Poison.decode!(data)
 
-    user = User.get_user(user_id)
+    server = Server.get_server(server_id)
 
     transactions =
       Enum.map(data["transactions"], fn transaction_params ->
@@ -99,11 +99,11 @@ defmodule Kniffel.Blockchain do
     block_params =
       block_params
       |> Map.drop(["transactions"])
-      |> Map.put("user", user)
+      |> Map.put("server", server)
       |> Map.put("transactions", transactions)
 
     %Block{}
-    |> Repo.preload([:user, :transactions])
+    |> Repo.preload([:server, :transactions])
     |> Block.changeset_p2p(block_params)
     |> Repo.insert()
   end

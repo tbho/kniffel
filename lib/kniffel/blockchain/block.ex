@@ -1,5 +1,5 @@
 defmodule Kniffel.Blockchain.Block do
-  alias Kniffel.User
+  alias Kniffel.Server
   alias Kniffel.Blockchain.Crypto
   alias Kniffel.Blockchain.Block
 
@@ -8,7 +8,7 @@ defmodule Kniffel.Blockchain.Block do
 
   # Specify which fields to hash in a block
   @sign_fields [:index, :data, :pre_hash]
-  @hash_fields [:user_id, :timestamp, :signature, :proof | @sign_fields]
+  @hash_fields [:server_id, :timestamp, :signature, :proof | @sign_fields]
 
   @primary_key {:index, :id, autogenerate: false}
   @foreign_key_type :index
@@ -21,7 +21,7 @@ defmodule Kniffel.Blockchain.Block do
     field :signature, :string
     field :data, :string
 
-    belongs_to(:user, Kniffel.User, type: :string)
+    belongs_to(:server, Kniffel.Server, type: :string)
     has_many(:transactions, Kniffel.Blockchain.Transaction)
   end
 
@@ -29,9 +29,9 @@ defmodule Kniffel.Blockchain.Block do
   def changeset_p2p(block, attrs) do
     block
     |> cast(attrs, [:pre_hash, :data, :index])
-    |> cast(attrs, [:proof, :timestamp, :hash, :signature, :user_id])
+    |> cast(attrs, [:proof, :timestamp, :hash, :signature, :server_id])
     |> put_assoc(:transactions, attrs["transactions"] || block.transactions)
-    |> put_assoc(:user, attrs["user"] || block.user)
+    |> put_assoc(:server, attrs["server"] || block.server)
     |> verify_changeset
   end
 
@@ -56,10 +56,10 @@ defmodule Kniffel.Blockchain.Block do
     with {:ok, private_key} <- Crypto.private_key(),
          {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key),
          {:ok, rsa_pub_key} <- ExPublicKey.public_key_from_private_key(private_key),
-         user_id <- ExPublicKey.RSAPublicKey.get_fingerprint(rsa_pub_key) do
+         server_id <- ExPublicKey.RSAPublicKey.get_fingerprint(rsa_pub_key) do
       changeset =
         changeset
-        |> cast(%{user_id: user_id}, [:user_id])
+        |> cast(%{server_id: server_id}, [:server_id])
 
       signature =
         changeset
@@ -109,8 +109,8 @@ defmodule Kniffel.Blockchain.Block do
   def verify_changeset(%Ecto.Changeset{} = changeset) do
     with {_, signature} = fetch_field(changeset, :signature),
          {_, hash} = fetch_field(changeset, :hash),
-         {_, user} <- fetch_field(changeset, :user),
-         %User{} = user <- User.get_user(user.id) do
+         {_, server} <- fetch_field(changeset, :server),
+         %Server{} = server <- Server.get_server(server.id) do
       data =
         changeset
         |> take(@sign_fields)
@@ -131,7 +131,7 @@ defmodule Kniffel.Blockchain.Block do
           changeset
         end
 
-      case Crypto.verify(data, user.public_key, signature) do
+      case Crypto.verify(data, server.public_key, signature) do
         :ok ->
           changeset
 
@@ -153,7 +153,7 @@ defmodule Kniffel.Blockchain.Block do
       hash: block.hash,
       signature: block.signature,
       timestamp: block.timestamp,
-      user_id: block.user_id
+      server_id: block.server_id
     }
   end
 end
