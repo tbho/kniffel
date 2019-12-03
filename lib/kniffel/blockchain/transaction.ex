@@ -71,7 +71,6 @@ defmodule Kniffel.Blockchain.Transaction do
   def verify_changeset(%Ecto.Changeset{} = changeset) do
     with %Ecto.Changeset{} <- changeset,
          {_, signature} <- fetch_field(changeset, :signature),
-         {_, data} <- fetch_field(changeset, :data),
          {_, user} <- fetch_field(changeset, :user),
          %User{} = user <- User.get_user(user.id) do
       data =

@@ -7,11 +7,10 @@ defmodule Kniffel.User do
   alias Kniffel.{
     Repo,
     User,
-    Game,
     Server
   }
 
-  alias Kniffel.Blockchain.{Crypto, Transaction, Block}
+  alias Kniffel.Blockchain.{Transaction}
   alias Kniffel.Game.{Score}
 
   @primary_key {:id, :string, autogenerate: false}
@@ -26,7 +25,6 @@ defmodule Kniffel.User do
 
     many_to_many :games, Kniffel.User, join_through: "game_users", on_replace: :delete
     has_many(:scores, Score)
-    has_many(:blocks, Block)
     has_many(:transactions, Transaction)
     has_many(:sessions, Kniffel.User.Session)
 
@@ -66,7 +64,6 @@ defmodule Kniffel.User do
     |> validate_password
     |> put_assoc(:games, attrs["games"] || user.games)
     |> put_assoc(:scores, attrs["scores"] || user.scores)
-    |> put_assoc(:blocks, attrs["blocks"] || user.blocks)
     |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
   end
 
@@ -83,7 +80,6 @@ defmodule Kniffel.User do
     |> cast(attrs, [:id, :public_key])
     |> put_assoc(:games, attrs["games"] || user.games)
     |> put_assoc(:scores, attrs["scores"] || user.scores)
-    |> put_assoc(:blocks, attrs["blocks"] || user.blocks)
     |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
   end
 
@@ -134,7 +130,7 @@ defmodule Kniffel.User do
   def create_user(user_params) do
     {:ok, user} =
       %User{}
-      |> Repo.preload([:games, :scores, :blocks, :transactions])
+      |> Repo.preload([:games, :scores, :transactions])
       |> User.changeset_gen_id(user_params)
       |> Repo.insert()
 
@@ -151,14 +147,14 @@ defmodule Kniffel.User do
 
   def create_user_p2p(user_params) do
     %User{}
-    |> Repo.preload([:games, :scores, :blocks, :transactions])
+    |> Repo.preload([:games, :scores, :transactions])
     |> User.changeset_p2p(user_params)
     |> Repo.insert()
   end
 
   def change_user(user \\ %User{}, user_params \\ %{}) do
     user
-    |> Repo.preload([:games, :scores, :blocks, :transactions])
+    |> Repo.preload([:games, :scores, :transactions])
     |> User.changeset(user_params)
   end
 
