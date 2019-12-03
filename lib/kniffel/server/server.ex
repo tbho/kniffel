@@ -58,6 +58,10 @@ defmodule Kniffel.Server do
     Repo.get(Server, id)
   end
 
+  def get_server_by_url(url) do
+    Repo.get_by(Server, url: url)
+  end
+
   def get_this_server() do
     {:ok, private_key} = Crypto.private_key()
     {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
@@ -70,9 +74,19 @@ defmodule Kniffel.Server do
     {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
     {:ok, server} = Poison.decode(response.body)
 
-    %Server{}
+    {:ok, server} = %Server{}
     |> Server.changeset(server["server"])
     |> Repo.insert()
+
+    {:ok, response} = HTTPoison.post(
+      server.url <> "/api/servers",
+      Poison.encode!(%{server: %{url: Server.get_this_server.url}}),
+      [
+        {"Content-Type", "application/json"}
+      ]
+    )
+
+    {:ok, server}
   end
 
   def update_server(server, server_params) do
