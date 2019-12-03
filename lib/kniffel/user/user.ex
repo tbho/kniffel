@@ -137,7 +137,7 @@ defmodule Kniffel.User do
     servers = Server.get_others_servers()
 
     Enum.map(servers, fn server ->
-      HTTPoison.post(server.url <> "/api/users", Poison.encode!(User.json(user)), [
+      HTTPoison.post(server.url <> "/api/users", Poison.encode!(%{user: User.json(user)}), [
         {"Content-Type", "application/json"}
       ])
     end)
