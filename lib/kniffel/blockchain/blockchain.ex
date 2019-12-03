@@ -128,6 +128,7 @@ defmodule Kniffel.Blockchain do
 
   def get_transaction(index) do
     Transaction
+    |> order_by(asc: :inserted_at)
     |> Repo.get(index)
   end
 
@@ -156,7 +157,7 @@ defmodule Kniffel.Blockchain do
     if length(games) > 0 || length(scores) > 0 do
       score_data =
         Enum.map(scores, fn score ->
-          Map.take(score, [:dices, :score_type, :id, :predecessor_id, :user_id, :game_id])
+          Map.take(score, [:dices, :score_type, :id, :predecessor_id, :user_id, :game_id, :inserted_at])
         end)
 
       game_data =

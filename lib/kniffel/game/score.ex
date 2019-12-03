@@ -45,7 +45,7 @@ defmodule Kniffel.Game.Score do
   @doc false
   def changeset_p2p(score, attrs) do
     score
-    |> cast(attrs, [:id, :dices, :score_type, :predecessor_id, :user_id, :game_id])
+    |> cast(attrs, [:id, :dices, :score_type, :predecessor_id, :user_id, :game_id, :inserted_at])
   end
 
   @doc false
