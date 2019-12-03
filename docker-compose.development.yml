@@ -17,6 +17,7 @@ services:
       DATABASE_URL: "psql://kniffel:kniffel@db/kniffel"
       PRIV_KEY_PATH: "/kniffel.key"
       AES_KEY: "test"
+      URL: "https://localhost:4000"
     ports:
       - "4000:4000"
 
