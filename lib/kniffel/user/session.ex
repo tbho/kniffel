@@ -15,8 +15,6 @@ defmodule Kniffel.User.Session do
 
   alias Kniffel.User.Session
 
-  require Logger
-
   use Ecto.Schema
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -157,7 +155,7 @@ defmodule Kniffel.User.Session do
       {:ok, session}
     else
       {:error, message} ->
-        Logger.error("Login failed: #{message}")
+        IO.inspect("Login failed: #{message}")
         {:error, :not_found}
     end
   end

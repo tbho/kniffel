@@ -10,20 +10,13 @@ use Mix.Config
 config :kniffel,
   ecto_repos: [Kniffel.Repo]
 
-database_url = System.get_env("DATABASE_URL")
-IO.inspect database_url
-
 config :kniffel, Kniffel.Repo,
-  url: database_url,
-  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
-
-secret_key_base = System.get_env("SECRET_KEY_BASE")
+  pool_size: 10
 
 # Configures the endpoint
 config :kniffel, KniffelWeb.Endpoint,
-  http: [:inet6, port: String.to_integer(System.get_env("PORT") || "4000")],
+  http: [:inet6, port: 4000],
   url: [host: "localhost"],
-  secret_key_base: secret_key_base,
   render_errors: [view: KniffelWeb.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Kniffel.PubSub, adapter: Phoenix.PubSub.PG2]
 

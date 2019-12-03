@@ -10,8 +10,6 @@ defmodule Kniffel.Blockchain do
   alias Kniffel.Blockchain.Transaction
   alias Kniffel.{Game, Game.Score, User}
 
-  require Logger
-
   # -----------------------------------------------------------------
   # -- Block
   # -----------------------------------------------------------------

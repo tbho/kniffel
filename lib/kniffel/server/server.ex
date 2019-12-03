@@ -9,8 +9,6 @@ defmodule Kniffel.Server do
     Server
   }
 
-  require Logger
-
   @primary_key {:id, :string, autogenerate: false}
   @foreign_key_type :string
 

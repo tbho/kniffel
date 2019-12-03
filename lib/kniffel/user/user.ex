@@ -13,8 +13,6 @@ defmodule Kniffel.User do
   alias Kniffel.Blockchain.{Crypto, Transaction, Block}
   alias Kniffel.Game.{Score}
 
-  require Logger
-
   @primary_key {:id, :string, autogenerate: false}
   @foreign_key_type :string
 

@@ -14,8 +14,6 @@ defmodule Kniffel.Game do
     Score
   }
 
-  require Logger
-
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
