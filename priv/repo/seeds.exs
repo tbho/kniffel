@@ -14,7 +14,7 @@ alias Kniffel.{Server, Blockchain, Repo}
 alias Kniffel.Blockchain.Crypto
 alias Kniffel.Blockchain.Block
 
-{:ok, private_key} = Crypto.private_key
+{:ok, private_key} = Crypto.private_key()
 {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
 {:ok, pem_string} = ExPublicKey.pem_encode(public_key)
 id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
@@ -22,20 +22,22 @@ id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
 case Server.get_server(id) do
   %Server{} = server ->
     server
+
   nil ->
     %Server{}
     |> Server.changeset(%{
       "public_key" => pem_string,
       "url" => System.get_env("URL")
     })
-    |> Repo.insert
+    |> Repo.insert()
 end
 
 case Blockchain.get_block(0) do
   %Block{} = block ->
     block
+
   nil ->
-    Blockchain.genesis
+    Blockchain.genesis()
 end
 
 # if System.get_env("ENV_NAME") != "production" do

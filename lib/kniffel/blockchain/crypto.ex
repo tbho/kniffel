@@ -1,6 +1,4 @@
 defmodule Kniffel.Blockchain.Crypto do
-  alias Kniffel.Blockchain.Block
-
   @doc "Calculate hash of block"
   def hash(data) do
     data

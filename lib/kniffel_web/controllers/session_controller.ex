@@ -1,7 +1,6 @@
 defmodule KniffelWeb.SessionController do
   use KniffelWeb, :controller
 
-  alias Kniffel.{User, Repo}
   alias Kniffel.User.Session
 
   def new(conn, _params) do
@@ -25,7 +24,6 @@ defmodule KniffelWeb.SessionController do
     case {format, result} do
       {"html", {:ok, session}} ->
         path = get_session(conn, :redirect_url) || "/"
-        user = User.get_user(session.user_id)
 
         conn
         |> put_session(:access_token, session.access_token)

@@ -2,7 +2,6 @@ defmodule KniffelWeb.Authentication do
   @moduledoc "Plug-compliant functions to authenticate requests"
 
   alias Kniffel.User.Session
-  alias Kniffel.User
   import Plug.Conn
   import Phoenix.Controller, only: [redirect: 2, put_flash: 3, get_format: 1]
 
@@ -39,7 +38,7 @@ defmodule KniffelWeb.Authentication do
 
   def call(conn, type: :api) do
     with ["Bearer " <> access_token] <- get_req_header(conn, "authorization"),
-         {:ok, session} <- Accounts.verify_session(access_token, nil) do
+         {:ok, session} <- Session.verify_session(access_token, nil) do
       assign(conn, :session, session)
     else
       _other ->

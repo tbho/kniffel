@@ -6,7 +6,8 @@ defmodule Kniffel.Server do
 
   alias Kniffel.{
     Repo,
-    Server
+    Server,
+    Blockchain.Crypto
   }
 
   @primary_key {:id, :string, autogenerate: false}
@@ -43,19 +44,29 @@ defmodule Kniffel.Server do
     Repo.all(Server)
   end
 
+  def get_others_servers() do
+    {:ok, private_key} = Crypto.private_key()
+    {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
+    server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+
+    Server
+    |> where([s], s.id != ^server_id)
+    |> Repo.all()
+  end
+
   def get_server(id) do
     Repo.get(Server, id)
   end
 
   def get_this_server() do
-    {:ok, private_key} = Crypto.private_key
+    {:ok, private_key} = Crypto.private_key()
     {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
     server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
 
     Server.get_server(server_id)
   end
 
-  def create_server(%{"url" => url} = server_params) do
+  def create_server(%{"url" => url}) do
     {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
     {:ok, server} = Poison.decode(response.body)
 
@@ -66,7 +77,7 @@ defmodule Kniffel.Server do
 
   def update_server(server, server_params) do
     server
-    |> Server.changeset_update(server_params)
+    |> Server.changeset(server_params)
     |> Repo.update()
   end
 

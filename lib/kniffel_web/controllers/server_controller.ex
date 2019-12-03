@@ -2,7 +2,6 @@ defmodule KniffelWeb.ServerController do
   use KniffelWeb, :controller
 
   alias Kniffel.Server
-  alias Kniffel.Blockchain.Crypto
 
   def index(conn, _params) do
     servers = Server.get_servers()
@@ -10,7 +9,7 @@ defmodule KniffelWeb.ServerController do
   end
 
   def this(conn, _params) do
-    server = Server.get_this_server
+    server = Server.get_this_server()
     render(conn, "show.json", server: server)
   end
 

@@ -7,7 +7,8 @@ defmodule Kniffel.User do
   alias Kniffel.{
     Repo,
     User,
-    Game
+    Game,
+    Server
   }
 
   alias Kniffel.Blockchain.{Crypto, Transaction, Block}
@@ -70,7 +71,7 @@ defmodule Kniffel.User do
   end
 
   @doc false
-  def changeset_p2p(user,%{"public_key" => public_key} = attrs) do
+  def changeset_p2p(user, %{"public_key" => public_key} = attrs) do
     {:ok, public_key} = ExPublicKey.loads(public_key)
     id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
 
@@ -131,17 +132,21 @@ defmodule Kniffel.User do
   end
 
   def create_user(user_params) do
-    %User{}
-    |> Repo.preload([:games, :scores, :blocks, :transactions])
-    |> User.changeset_gen_id(user_params)
-    |> Repo.insert()
+    {:ok, user} =
+      %User{}
+      |> Repo.preload([:games, :scores, :blocks, :transactions])
+      |> User.changeset_gen_id(user_params)
+      |> Repo.insert()
 
-    servers = Server.get_servers() -- Server.get_this_server()
+    servers = Server.get_others_servers()
 
     Enum.map(servers, fn server ->
-      HTTPoison.post(server <> "/api/users", Poison.encode!(User.json(user)), [
+      HTTPoison.post(server.url <> "/api/users", Poison.encode!(User.json(user)), [
         {"Content-Type", "application/json"}
       ])
+    end)
+
+    {:ok, user}
   end
 
   def create_user_p2p(user_params) do

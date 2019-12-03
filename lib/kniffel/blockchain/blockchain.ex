@@ -8,7 +8,7 @@ defmodule Kniffel.Blockchain do
   alias Kniffel.Repo
   alias Kniffel.Blockchain.Block
   alias Kniffel.Blockchain.Transaction
-  alias Kniffel.{Game, Game.Score, User}
+  alias Kniffel.{Game, Game.Score, User, Server}
 
   # -----------------------------------------------------------------
   # -- Block
@@ -102,10 +102,21 @@ defmodule Kniffel.Blockchain do
       |> Map.put("server", server)
       |> Map.put("transactions", transactions)
 
-    %Block{}
-    |> Repo.preload([:server, :transactions])
-    |> Block.changeset_p2p(block_params)
-    |> Repo.insert()
+    {:ok, block} =
+      %Block{}
+      |> Repo.preload([:server, :transactions])
+      |> Block.changeset_p2p(block_params)
+      |> Repo.insert()
+
+    servers = Server.get_others_servers()
+
+    Enum.map(servers, fn server ->
+      HTTPoison.post(server.url <> "/api/blocks", Poison.encode!(Block.json(block)), [
+        {"Content-Type", "application/json"}
+      ])
+    end)
+
+    {:ok, block}
   end
 
   # -----------------------------------------------------------------
@@ -169,19 +180,25 @@ defmodule Kniffel.Blockchain do
         |> Map.put("games", games)
         |> Map.put("scores", scores)
 
-      transaction =
+      {:ok, transaction} =
         %Transaction{}
         |> Repo.preload([:user, :block])
         |> Transaction.changeset_create(transaction_params)
         |> Repo.insert()
 
-      servers = Server.get_servers() -- Server.get_this_server()
+      servers = Server.get_others_servers()
 
       Enum.map(servers, fn server ->
-        HTTPoison.post(server <> "/transactions", Poison.encode!(Transaction.json(transaction)), [
-          {"Content-Type", "application/json"}
-        ])
+        HTTPoison.post(
+          server.url <> "/api/transactions",
+          Poison.encode!(Transaction.json(user)),
+          [
+            {"Content-Type", "application/json"}
+          ]
+        )
       end)
+
+      {:ok, transaction}
     else
       {:error, :no_data_for_transaction}
     end

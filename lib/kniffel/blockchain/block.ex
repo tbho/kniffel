@@ -81,7 +81,7 @@ defmodule Kniffel.Blockchain.Block do
     put_change(changeset, :hash, correct_hash)
   end
 
-  def pow_changeset(wrong_hash, %Ecto.Changeset{} = changeset) do
+  def pow_changeset(_, %Ecto.Changeset{} = changeset) do
     {_, proof} = fetch_field(changeset, :proof)
 
     changeset =

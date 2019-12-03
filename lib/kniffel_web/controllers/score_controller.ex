@@ -137,7 +137,7 @@ defmodule KniffelWeb.ScoreController do
           score =
             score_id
             |> Game.get_score()
-            |> Map.update!(:roll, &Game.get_roll_with_history(&1))
+            |> Map.update!(:roll, &Game.get_score_with_history(&1))
 
           conn
           |> put_flash(:error, "Fehler beim Erstellen")
