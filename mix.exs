@@ -53,7 +53,8 @@ defmodule Kniffel.MixProject do
       {:quantum, "~> 2.3"},
       {:timex, "~> 3.0"},
       {:httpoison, "~> 1.6"},
-      {:distillery, "~> 2.0"}
+      {:distillery, "~> 2.0"},
+      {:nebulex, "~> 1.1"}
     ]
   end
 

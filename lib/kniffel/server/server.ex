@@ -63,28 +63,38 @@ defmodule Kniffel.Server do
   end
 
   def get_this_server() do
-    {:ok, private_key} = Crypto.private_key()
-    {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
-    server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+    case Kniffel.Cache.get(:server) do
+      %Server{} = server ->
+        server
 
-    Server.get_server(server_id)
+      nil ->
+        {:ok, private_key} = Crypto.private_key()
+        {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
+        server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+
+        server = Server.get_server(server_id)
+        Kniffel.Cache.set(:server, server)
+        server
+    end
   end
 
   def create_server(%{"url" => url}) do
     {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
     {:ok, server} = Poison.decode(response.body)
 
-    {:ok, server} = %Server{}
-    |> Server.changeset(server["server"])
-    |> Repo.insert()
+    {:ok, server} =
+      %Server{}
+      |> Server.changeset(server["server"])
+      |> Repo.insert()
 
-    {:ok, response} = HTTPoison.post(
-      server.url <> "/api/servers",
-      Poison.encode!(%{server: %{url: Server.get_this_server.url}}),
-      [
-        {"Content-Type", "application/json"}
-      ]
-    )
+    {:ok, _response} =
+      HTTPoison.post(
+        server.url <> "/api/servers",
+        Poison.encode!(%{server: %{url: Server.get_this_server().url}}),
+        [
+          {"Content-Type", "application/json"}
+        ]
+      )
 
     {:ok, server}
   end

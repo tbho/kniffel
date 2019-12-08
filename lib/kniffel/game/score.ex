@@ -21,9 +21,14 @@ defmodule Kniffel.Game.Score do
   @doc false
   def changeset(score, attrs) do
     dices =
-      attrs["dices_to_roll"]
-      |> Enum.map(fn x ->
-        {x, :rand.uniform(6)}
+      Enum.reduce(["a", "b", "c", "d", "e"], %{}, fn capital, acc ->
+        case attrs["dices_to_roll_#{capital}"] || nil do
+          "on" ->
+            Map.put(acc, capital, :rand.uniform(6))
+
+          nil ->
+            acc
+        end
       end)
       |> Map.new()
 

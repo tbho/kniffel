@@ -8,10 +8,10 @@ div.level
 div.level
   h2.title.is-2 = @score.id
 
-div.box
-  div.tags.are-medium
-    = for dice <- rolls do
-      span.tag = elem(dice, 1)
+/ div.box
+/   div.tags.are-medium
+/     = for dice <- rolls do
+/       = render("roll.html", number: elem(dice, 1))
 
 = if is_allowed_to_roll_again(@score) do
   div.box
@@ -20,11 +20,17 @@ div.box
       = hidden_input(score_form, :user_id, value: @score.user.id)
       = hidden_input(score_form, :predecessor_id, value: @score.id)
 
+
       div.columns
         div.column
           h5.title.is-5 = gettext("Please select which dices to roll new!")
-          div.select.is-multiple
-            = multiple_select(score_form, :dices_to_roll, Enum.map(rolls, fn {x, y} -> {y, x} end), multiple: true, size: length(Map.to_list(rolls)))
+          = for dice <- rolls do
+            label.dice
+              input.dice(type="checkbox" name="score[dices_to_roll_#{elem(dice, 0)}]")
+              = render("roll.html", number: elem(dice, 1))
+
+          / div.select.is-multiple
+          /   = multiple_select(score_form, :dices_to_roll, Enum.map(rolls, fn {x, y} -> {y, x} end), multiple: true, size: length(Map.to_list(rolls)))
 
       div.columns
         div.column

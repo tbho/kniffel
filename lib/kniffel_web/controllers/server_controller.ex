@@ -22,6 +22,7 @@ defmodule KniffelWeb.ServerController do
     case Server.get_server_by_url(url) do
       %Server{} ->
         json(conn, %{ok: "Server already known."})
+
       nil ->
         case Server.create_server(server) do
           {:ok, server} ->

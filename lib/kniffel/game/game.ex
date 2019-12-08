@@ -79,8 +79,11 @@ defmodule Kniffel.Game do
   end
 
   def create_inital_score(score_params) do
-    score_params
-    |> Map.put("dices_to_roll", ["a", "b", "c", "d", "e"])
+    ["a", "b", "c", "d", "e"]
+    |> Enum.reduce(
+      score_params,
+      &Map.put(&2, "dices_to_roll_#{&1}", "on")
+    )
     |> Map.put("predecessor_id", nil)
     |> Map.put("score_type", :none)
     |> create_score
@@ -124,7 +127,11 @@ defmodule Kniffel.Game do
 
   def change_score(
         score \\ %Score{},
-        attrs \\ %{"dices_to_roll" => ["a", "b", "c", "d", "e"], "predecessor_id" => nil}
+        attrs \\ Enum.reduce(
+          ["a", "b", "c", "d", "e"],
+          %{"predecessor_id" => nil},
+          &Map.put(&2, "dices_to_roll_#{&1}", "on")
+        )
       ) do
     score
     |> Repo.preload([:predecessor, :user, :game, :transaction])

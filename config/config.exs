@@ -35,7 +35,7 @@ config :phoenix, :template_engines,
 config :kniffel, Kniffel.Scheduler,
   jobs: [
     # Every minute
-    {"* * * * *", {Kniffel.Blockchain, :create_new_block, []}}
+    # {"* * * * *", {Kniffel.Blockchain, :create_new_block, []}}
 
     # # Every 15 minutes
     # {"*/15 * * * *",   fn -> System.cmd("rm", ["/tmp/tmp_"]) end},
@@ -44,6 +44,10 @@ config :kniffel, Kniffel.Scheduler,
     # # Runs every midnight:
     # {"@daily",         {Backup, :backup, []}}
   ]
+
+config :kniffel, Kniffel.Cache,
+  # 24 hrs
+  gc_interval: 86_400
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

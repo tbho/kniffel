@@ -14,7 +14,9 @@ defmodule Kniffel.Application do
       KniffelWeb.Endpoint,
       # Starts a worker by calling: Kniffel.Worker.start_link(arg)
       # {Kniffel.Worker, arg},
-      Kniffel.Scheduler
+      Kniffel.Scheduler,
+      # Start the Nebulex Cache
+      Kniffel.Cache
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

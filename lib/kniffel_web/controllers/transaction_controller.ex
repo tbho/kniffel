@@ -26,7 +26,7 @@ defmodule KniffelWeb.TransactionController do
     })
   end
 
-  def create(conn, attrs), do: create(get_format(conn), conn, IO.inspect(attrs))
+  def create(conn, attrs), do: create(get_format(conn), conn, attrs)
 
   def create("html", conn, transaction_params) do
     user =

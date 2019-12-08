@@ -71,17 +71,22 @@ defmodule Kniffel.Blockchain do
         pre_hash: last_block.hash
       }
 
-      {:ok, block} = %Block{}
-      |> Repo.preload([:server])
-      |> Block.changeset_create(block_params)
-      |> Repo.insert()
+      {:ok, block} =
+        %Block{}
+        |> Repo.preload([:server])
+        |> Block.changeset_create(block_params)
+        |> Repo.insert()
 
       servers = Server.get_others_servers()
 
       Enum.map(servers, fn server ->
-        HTTPoison.post(server.url <> "/api/blocks", Poison.encode!(%{block: Block.json_encode(block)}), [
-          {"Content-Type", "application/json"}
-        ])
+        HTTPoison.post(
+          server.url <> "/api/blocks",
+          Poison.encode!(%{block: Block.json_encode(block)}),
+          [
+            {"Content-Type", "application/json"}
+          ]
+        )
       end)
 
       {:ok, block}
@@ -112,10 +117,10 @@ defmodule Kniffel.Blockchain do
       |> Map.put("server", server)
       |> Map.put("transactions", transactions)
 
-      %Block{}
-      |> Repo.preload([:server, :transactions])
-      |> Block.changeset_p2p(block_params)
-      |> Repo.insert()
+    %Block{}
+    |> Repo.preload([:server, :transactions])
+    |> Block.changeset_p2p(block_params)
+    |> Repo.insert()
   end
 
   # -----------------------------------------------------------------
@@ -123,13 +128,13 @@ defmodule Kniffel.Blockchain do
   # -----------------------------------------------------------------
   def get_transactions() do
     from(t in Transaction)
+    |> order_by(asc: :timestamp)
     |> Repo.all()
   end
 
-  def get_transaction(index) do
+  def get_transaction(id) do
     Transaction
-    |> order_by(asc: :inserted_at)
-    |> Repo.get(index)
+    |> Repo.get(id)
   end
 
   def get_transaction_data(user_id) do
@@ -138,7 +143,7 @@ defmodule Kniffel.Blockchain do
       |> where([s], is_nil(s.transaction_id))
       |> where([s], s.user_id == ^user_id)
       |> where([s], s.score_type != "none")
-      |> order_by(asc: :inserted_at)
+      |> order_by(asc: :timestamp)
       |> Repo.all()
 
     games =
@@ -157,7 +162,15 @@ defmodule Kniffel.Blockchain do
     if length(games) > 0 || length(scores) > 0 do
       score_data =
         Enum.map(scores, fn score ->
-          Map.take(score, [:dices, :score_type, :id, :predecessor_id, :user_id, :game_id, :inserted_at])
+          Map.take(score, [
+            :dices,
+            :score_type,
+            :id,
+            :predecessor_id,
+            :user_id,
+            :game_id,
+            :inserted_at
+          ])
         end)
 
       game_data =
@@ -190,13 +203,13 @@ defmodule Kniffel.Blockchain do
       servers = Server.get_others_servers()
 
       Enum.map(servers, fn server ->
-        HTTPoison.post(
+        IO.inspect(HTTPoison.post(
           server.url <> "/api/transactions",
           Poison.encode!(%{transaction: Transaction.json_encode(transaction)}),
           [
             {"Content-Type", "application/json"}
           ]
-        )
+        ))
       end)
 
       {:ok, transaction}
@@ -210,11 +223,11 @@ defmodule Kniffel.Blockchain do
 
     user = User.get_user(user_id)
 
-    games = Enum.map(data["games"], fn game ->
-      users = Enum.map(game["users"] || [], &User.get_user(&1))
-      Map.put(game, "users", users)
-    end)
-
+    games =
+      Enum.map(data["games"], fn game ->
+        users = Enum.map(game["users"] || [], &User.get_user(&1))
+        Map.put(game, "users", users)
+      end)
 
     block_index = transaction_params["block_index"] || nil
 

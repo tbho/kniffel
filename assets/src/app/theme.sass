@@ -17,4 +17,59 @@ $info: $fsyellow
 $footer-padding: 1rem 1.5rem 1rem
 $footer-background-color: $fsblue
 
+input.dice
+  &[type=radio], &[type=checkbox]
+    visibility: hidden
+
+.outer_fill
+  fill: #ffffff
+  fill-rule: nonzero
+
+.outer_border, .inner_border
+  fill: #10375B
+  fill-rule: nonzero
+
+.dice
+  .number
+    fill: #10375B
+    fill-rule: nonzero
+
+  .fill
+    fill: #ffffff
+    fill-rule: nonzero
+
+  .border
+    fill: #10375B
+    fill-rule: nonzero
+
+  [type=checkbox]:checked + span
+    .number
+      fill: #ffffff
+      fill-rule: nonzero
+
+    .fill
+      fill: #10375B
+      fill-rule: nonzero
+
+    .border
+      fill: #ffffff
+      fill-rule: nonzero
+
+  &:hover
+    .number
+      fill: #10375B
+      fill-rule: nonzero
+
+    .fill
+      fill: #AFD7ED
+      fill-rule: nonzero
+
+    .outer_fill
+      fill: #AFD7ED
+      fill-rule: nonzero
+
+    .border
+      fill: #10375B
+      fill-rule: nonzero
+
 @import 'bulma'
