@@ -95,32 +95,49 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  def insert_block(%{"server_id" => server_id, "data" => data} = block_params) do
-    data = Poison.decode!(data)
+  def insert_block(%{"server_id" => server_id, "data" => data, "index" => index} = block_params) do
+    with data <- Poison.decode!(data),
+         %Server{authority: true} = server <- Server.get_server(server_id),
+         nil <- get_block(index) do
+      transactions =
+        Enum.map(data["transactions"], fn transaction_params ->
+          transaction = get_transaction(transaction_params["id"])
 
-    server = Server.get_server(server_id)
+          case transaction do
+            %Transaction{} = transaction ->
+              if transaction.signature == transaction_params["signature"] do
+                transaction
+              else
+                {:transaction_signature, "already known transaction does not match signature"}
+              end
 
-    transactions =
-      Enum.map(data["transactions"], fn transaction_params ->
-        transaction = get_transaction(transaction_params["id"])
+            nil ->
+              {:ok, %{body: %{transaction: transaction_params}}} =
+                HTTPoison.get(server.url <> "/api/transactions/#{transaction_params["id"]}")
 
-        if transaction.signature == transaction_params["signature"] do
-          transaction
-        else
-          nil
-        end
-      end)
+              IO.inspect(transaction_params)
+              {:ok, transaction} = insert_transaction(transaction_params)
+              transaction
+          end
+        end)
 
-    block_params =
-      block_params
-      |> Map.drop(["transactions"])
-      |> Map.put("server", server)
-      |> Map.put("transactions", transactions)
+      block_params =
+        block_params
+        |> Map.drop(["transactions"])
+        |> Map.put("server", server)
+        |> Map.put("transactions", transactions)
 
-    %Block{}
-    |> Repo.preload([:server, :transactions])
-    |> Block.changeset_p2p(block_params)
-    |> Repo.insert()
+      %Block{}
+      |> Repo.preload([:server, :transactions])
+      |> Block.changeset_p2p(block_params)
+      |> Repo.insert()
+    else
+      %Block{} = block ->
+        {:index_blocked, block}
+
+      nil ->
+        {:unknown_server, server_id}
+    end
   end
 
   # -----------------------------------------------------------------
@@ -143,7 +160,7 @@ defmodule Kniffel.Blockchain do
       |> where([s], is_nil(s.transaction_id))
       |> where([s], s.user_id == ^user_id)
       |> where([s], s.score_type != "none")
-      |> order_by(asc: :timestamp)
+      |> order_by(asc: :inserted_at)
       |> Repo.all()
 
     games =
@@ -203,13 +220,14 @@ defmodule Kniffel.Blockchain do
       servers = Server.get_others_servers()
 
       Enum.map(servers, fn server ->
-        IO.inspect(HTTPoison.post(
-          server.url <> "/api/transactions",
-          Poison.encode!(%{transaction: Transaction.json_encode(transaction)}),
-          [
-            {"Content-Type", "application/json"}
-          ]
-        ))
+        response =
+          HTTPoison.post(
+            server.url <> "/api/transactions",
+            Poison.encode!(%{transaction: Transaction.json_encode(transaction)}),
+            [
+              {"Content-Type", "application/json"}
+            ]
+          )
       end)
 
       {:ok, transaction}

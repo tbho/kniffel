@@ -16,6 +16,7 @@ defmodule Kniffel.Server do
   schema "server" do
     field :url, :string
     field :public_key, :string
+    field :authority, :boolean, default: false
 
     timestamps()
   end
@@ -33,7 +34,7 @@ defmodule Kniffel.Server do
       |> Map.put("id", id)
 
     server
-    |> cast(attrs, [:id, :url, :public_key])
+    |> cast(attrs, [:id, :url, :public_key, :authority])
   end
 
   # -----------------------------------------------------------------
