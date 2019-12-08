@@ -77,7 +77,7 @@ defmodule Kniffel.Blockchain do
         |> Block.changeset_create(block_params)
         |> Repo.insert()
 
-      servers = Server.get_others_servers()
+      servers = Server.get_other_servers()
 
       Enum.map(servers, fn server ->
         HTTPoison.post(
@@ -115,7 +115,6 @@ defmodule Kniffel.Blockchain do
               {:ok, %{body: %{transaction: transaction_params}}} =
                 HTTPoison.get(server.url <> "/api/transactions/#{transaction_params["id"]}")
 
-              IO.inspect(transaction_params)
               {:ok, transaction} = insert_transaction(transaction_params)
               transaction
           end
@@ -217,7 +216,7 @@ defmodule Kniffel.Blockchain do
         |> Transaction.changeset_create(transaction_params)
         |> Repo.insert()
 
-      servers = Server.get_others_servers()
+      servers = Server.get_other_servers()
 
       Enum.map(servers, fn server ->
         response =

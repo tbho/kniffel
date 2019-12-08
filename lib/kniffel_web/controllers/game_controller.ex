@@ -11,7 +11,7 @@ defmodule KniffelWeb.GameController do
 
   def show(conn, %{"id" => game_id}) do
     game = Game.get_game(game_id, [:users])
-    scores = Game.get_scores()
+    scores = Game.get_scores_for_game(game_id)
 
     render(conn, "show.html", game: game, scores: scores)
   end

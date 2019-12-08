@@ -45,13 +45,11 @@ defmodule Kniffel.Server do
     Repo.all(Server)
   end
 
-  def get_others_servers() do
-    {:ok, private_key} = Crypto.private_key()
-    {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
-    server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+  def get_other_servers() do
+    this_server = get_this_server
 
     Server
-    |> where([s], s.id != ^server_id)
+    |> where([s], s.id != ^this_server.id)
     |> Repo.all()
   end
 

@@ -134,7 +134,7 @@ defmodule Kniffel.User do
       |> User.changeset_gen_id(user_params)
       |> Repo.insert()
 
-    servers = Server.get_others_servers()
+    servers = Server.get_other_servers()
 
     Enum.map(servers, fn server ->
       HTTPoison.post(server.url <> "/api/users", Poison.encode!(%{user: User.json(user)}), [

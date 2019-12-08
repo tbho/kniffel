@@ -52,6 +52,11 @@ defmodule Kniffel.Game do
     |> Enum.map(&get_score_with_history(&1))
   end
 
+  def get_scores_for_game(game_id) do
+    Repo.all(from s in Score, where: s.score_type != "none", where: s.game_id == ^game_id)
+    |> Enum.map(&get_score_with_history(&1))
+  end
+
   def get_score(nil), do: nil
 
   def get_score(id) do
