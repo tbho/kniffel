@@ -1,10 +1,10 @@
 div.tags.are-medium
-  - {location, dices} = Map.pop(@dices, "location")
-  = for dice <- dices do
-    = case location do
+  = for dice <- @dices do
+    = case @location do
       - :block ->
         span.tag.is-success = elem(dice, 1)
       - :transaction ->
         span.tag.is-warning = elem(dice, 1)
       - :none ->
         span.tag.is-danger = elem(dice, 1)
+  span.tag.is-dark = @points

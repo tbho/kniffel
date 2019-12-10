@@ -14,16 +14,19 @@ div.level
         thead
           th score_type
           = for user <- @game.users do
-            th = user.id
+            th = String.slice(user.id, 0, 7)
         tbody
           = for type <- [:aces, :twos, :threes, :fours, :fives, :sixes] do
             tr
               td = type
               = for user <- @game.users do
                 td
-                  - score = display_score(@scores, user.id, type)
+                  - score = score_exists?(@scores, user.id, type)
                   = if score do
-                    = render("dice.html", dices: get_rolls_to_show(score))
+                    - dices = get_rolls_to_show(score)
+                    - {location, dices} = Map.pop(dices, "location")
+                    - points = calculate_score(dices, type)
+                    = render("dice.html", dices: dices, points: points, location: location)
                   - else
                     p No score yet!
           tr.is-selected
@@ -37,9 +40,12 @@ div.level
               td = type
               = for user <- @game.users do
                 td
-                  - score = display_score(@scores, user.id, type)
+                  - score = score_exists?(@scores, user.id, type)
                   = if score do
-                    = render("dice.html", dices: get_rolls_to_show(score))
+                    - dices = get_rolls_to_show(score)
+                    - {location, dices} = Map.pop(dices, "location")
+                    - points = calculate_score(dices, type)
+                    = render("dice.html", dices: dices, points: points, location: location)
                   - else
                     p No score yet!
           tr.is-selected
