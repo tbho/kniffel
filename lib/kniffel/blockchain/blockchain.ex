@@ -185,7 +185,9 @@ defmodule Kniffel.Blockchain do
             :predecessor_id,
             :user_id,
             :game_id,
-            :inserted_at
+            :inserted_at,
+            :signature,
+            :server_id
           ])
         end)
 

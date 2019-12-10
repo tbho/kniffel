@@ -42,7 +42,7 @@ defmodule KniffelWeb.ScoreController do
         score: score,
         re_roll_action: game_score_path(conn, :re_roll_score, game_id, score.id),
         finish_action: game_score_path(conn, :finish_score, game_id, score.id),
-        changeset: Game.change_score(),
+        conn: conn,
         score_types: score_types
       })
     else
@@ -71,7 +71,7 @@ defmodule KniffelWeb.ScoreController do
         score: score,
         roll_action: game_score_path(conn, :re_roll_score, game_id, score.id),
         finish_action: game_score_path(conn, :finish_score, game_id, score.id),
-        changeset: Game.change_score(),
+        conn: conn,
         score_types: score_types
       })
     else
@@ -113,7 +113,7 @@ defmodule KniffelWeb.ScoreController do
             score: score,
             re_roll_action: game_score_path(conn, :re_roll_score, game_id, score.id),
             finish_action: game_score_path(conn, :finish_score, game_id, score.id),
-            changeset: changeset,
+            conn: conn,
             score_types: score_types
           })
       end
@@ -142,7 +142,7 @@ defmodule KniffelWeb.ScoreController do
           conn
           |> put_flash(:error, "Fehler beim Erstellen")
           |> render("update.html",
-            changeset: changeset,
+            conn: conn,
             roll_action: game_score_path(conn, :re_roll, game_id, score.id),
             update_action: game_score_path(conn, :finish, game_id, score.id)
           )

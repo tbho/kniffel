@@ -13,4 +13,4 @@ div.box
     = for dice <- rolls do
       = render("roll.html", number: elem(dice, 1))
 
-= render("_score_type.html", [rolls: rolls, changeset: @changeset, finish_action: @finish_action, score_types: @score_types])
+= render("_score_type.html", [rolls: rolls, conn: @conn, finish_action: @finish_action, score_types: @score_types])

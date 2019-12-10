@@ -53,6 +53,19 @@ defmodule Kniffel.Server do
     |> Repo.all()
   end
 
+  def get_authorative_servers() do
+    this_server = get_this_server
+
+    if this_server.authority do
+      this_server
+    else
+      Server
+      |> where([s], s.authority != true)
+      |> limit(1)
+      |> Repo.one()
+    end
+  end
+
   def get_server(id) do
     Repo.get(Server, id)
   end
@@ -110,5 +123,25 @@ defmodule Kniffel.Server do
 
   def change_server(server \\ %Server{}, attrs \\ %{}) do
     changeset(server, attrs)
+  end
+
+  def roll_dices(dices_to_roll) do
+    with {:ok, private_key} <- Crypto.private_key(),
+         {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key) do
+      dices =
+        dices_to_roll
+        |> Enum.map(fn x ->
+          {x, :rand.uniform(6)}
+        end)
+        |> Map.new()
+
+      signature =
+        Poison.encode!(%{"dices" => dices})
+        |> Crypto.sign(private_key_pem)
+
+      server = get_this_server
+
+      %{dices: dices, signature: signature, server_id: server.id}
+    end
   end
 end

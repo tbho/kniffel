@@ -18,6 +18,21 @@ defmodule KniffelWeb.ServerController do
     render(conn, "show.json", server: server)
   end
 
+  def roll(conn, attrs) do
+    with dices <- attrs["dices_to_roll"] || [],
+         true <- is_list(dices),
+         n when n > 0 <-
+           length(dices) do
+      dices = Server.roll_dices(dices)
+      json(conn, dices)
+    else
+      false ->
+        json(conn, %{error: "no dices_to_roll specified"})
+      0 ->
+        json(conn, %{error: "no dices_to_roll specified"})
+    end
+  end
+
   def create(conn, %{"server" => %{"url" => url} = server}) do
     case Server.get_server_by_url(url) do
       %Server{} ->

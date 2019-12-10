@@ -15,7 +15,7 @@ div.level
 
 = if is_allowed_to_roll_again(@score) do
   div.box
-    = form_for @changeset, @re_roll_action, fn score_form ->
+    = form_for @conn, @re_roll_action, [as: :score], fn score_form ->
       = hidden_input(score_form, :game_id, value: @score.game.id)
       = hidden_input(score_form, :user_id, value: @score.user.id)
       = hidden_input(score_form, :predecessor_id, value: @score.id)
@@ -36,4 +36,4 @@ div.level
         div.column
           = submit gettext("Create"), class: "button is-primary"
 
-= render("_score_type.html", [score: @score, changeset: @changeset, finish_action: @finish_action, score_types: @score_types])
+= render("_score_type.html", [score: @score, conn: @conn, finish_action: @finish_action, score_types: @score_types])

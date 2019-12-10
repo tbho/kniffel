@@ -119,7 +119,7 @@ defmodule Kniffel.Game do
       |> Map.put("predecessor", pre_score)
 
     %Score{}
-    |> Repo.preload([:predecessor, :game, :user, :transaction])
+    |> Repo.preload([:predecessor, :game, :user, :transaction, :server])
     |> Score.changeset(score_params)
     |> Repo.insert()
   end
@@ -139,7 +139,7 @@ defmodule Kniffel.Game do
         )
       ) do
     score
-    |> Repo.preload([:predecessor, :user, :game, :transaction])
+    |> Repo.preload([:predecessor, :user, :game, :transaction, :server])
     |> Score.changeset(attrs)
   end
 

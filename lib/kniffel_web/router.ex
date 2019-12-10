@@ -53,6 +53,7 @@ defmodule KniffelWeb.Router do
     pipe_through :api
 
     get "/servers/this", ServerController, :this
+    post "/servers/roll", ServerController, :roll
     resources "/servers", ServerController, only: [:index, :show, :create]
     resources "/users", UserController, only: [:index, :show, :create]
     resources "/transactions", TransactionController, only: [:index, :show, :create]

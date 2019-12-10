@@ -1,5 +1,5 @@
 div.box
-  = form_for @changeset, @finish_action, fn score_form ->
+  = form_for @conn, @finish_action, [as: :score], fn score_form ->
       div.columns
         div.column
           h5.title.is-5 = gettext("Please select which dices to roll new!")
