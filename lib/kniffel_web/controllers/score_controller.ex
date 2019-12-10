@@ -97,7 +97,7 @@ defmodule KniffelWeb.ScoreController do
             |> redirect(to: game_score_path(conn, :finish, game_id, score.id))
           end
 
-        {:error, changeset} ->
+        {:error, _changeset} ->
           user =
             conn
             |> get_session(:user_id)
@@ -133,7 +133,7 @@ defmodule KniffelWeb.ScoreController do
           conn
           |> redirect(to: game_path(conn, :show, game_id))
 
-        {:error, changeset} ->
+        {:error, _changeset} ->
           score =
             score_id
             |> Game.get_score()

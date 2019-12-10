@@ -221,14 +221,13 @@ defmodule Kniffel.Blockchain do
       servers = Server.get_other_servers()
 
       Enum.map(servers, fn server ->
-        response =
-          HTTPoison.post(
-            server.url <> "/api/transactions",
-            Poison.encode!(%{transaction: Transaction.json_encode(transaction)}),
-            [
-              {"Content-Type", "application/json"}
-            ]
-          )
+        HTTPoison.post(
+          server.url <> "/api/transactions",
+          Poison.encode!(%{transaction: Transaction.json_encode(transaction)}),
+          [
+            {"Content-Type", "application/json"}
+          ]
+        )
       end)
 
       {:ok, transaction}

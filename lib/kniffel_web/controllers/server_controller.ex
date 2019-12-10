@@ -28,6 +28,7 @@ defmodule KniffelWeb.ServerController do
     else
       false ->
         json(conn, %{error: "no dices_to_roll specified"})
+
       0 ->
         json(conn, %{error: "no dices_to_roll specified"})
     end

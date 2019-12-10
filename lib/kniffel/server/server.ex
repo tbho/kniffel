@@ -46,7 +46,7 @@ defmodule Kniffel.Server do
   end
 
   def get_other_servers() do
-    this_server = get_this_server
+    this_server = get_this_server()
 
     Server
     |> where([s], s.id != ^this_server.id)
@@ -54,7 +54,7 @@ defmodule Kniffel.Server do
   end
 
   def get_authorative_servers() do
-    this_server = get_this_server
+    this_server = get_this_server()
 
     if this_server.authority do
       this_server
@@ -139,7 +139,7 @@ defmodule Kniffel.Server do
         Poison.encode!(%{"dices" => dices})
         |> Crypto.sign(private_key_pem)
 
-      server = get_this_server
+      server = get_this_server()
 
       %{dices: dices, signature: signature, server_id: server.id}
     end

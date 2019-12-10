@@ -3,6 +3,7 @@ defmodule Kniffel.Game.Score do
   import Ecto.Changeset
 
   alias Kniffel.Server
+  alias Kniffel.Blockchain.Crypto
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -36,13 +37,15 @@ defmodule Kniffel.Game.Score do
         end
       end)
 
-    {:ok, response} = HTTPoison.post(
-      server.url <> "/api/servers/roll",
-      Poison.encode!(%{dices_to_roll: dices_to_roll}),
-      [
-        {"Content-Type", "application/json"}
-      ]
-    )
+    {:ok, response} =
+      HTTPoison.post(
+        server.url <> "/api/servers/roll",
+        Poison.encode!(%{dices_to_roll: dices_to_roll}),
+        [
+          {"Content-Type", "application/json"}
+        ]
+      )
+
     %{"dices" => dices, "signature" => signature} = Poison.decode!(response.body)
 
     attrs =
@@ -87,7 +90,6 @@ defmodule Kniffel.Game.Score do
          {_, server_id} <- fetch_field(changeset, :server_id),
          {_, dices} <- fetch_field(changeset, :dices),
          %Server{} = server <- Server.get_server(server_id) do
-
       case Crypto.verify(Poison.encode!(dices), server.public_key, signature) do
         :ok ->
           changeset
