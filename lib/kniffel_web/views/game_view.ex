@@ -10,8 +10,27 @@ defmodule KniffelWeb.GameView do
   alias Kniffel.Game.Score
 
   def get_rolls_to_show(roll) do
-    Enum.reduce(["a", "b", "c", "d", "e"], %{}, fn type, result ->
-      Map.put(result, type, find_score_in_history(roll, type))
+    Enum.reduce(["a", "b", "c", "d", "e"], %{"location" => :block}, fn type, result ->
+      {location_temp, dice} = find_score_in_history(roll, type)
+
+      location =
+        case {result["location"], location_temp} do
+          {:block, :transaction} ->
+            :transaction
+
+          {:block, :none} ->
+            :none
+
+          {:transaction, :none} ->
+            :none
+
+          {other, _} ->
+            other
+        end
+
+      result
+      |> Map.put(type, dice)
+      |> Map.put("location", location)
     end)
   end
 
@@ -23,7 +42,16 @@ defmodule KniffelWeb.GameView do
         find_score_in_history(roll.predecessor, type)
 
       dice ->
-        dice
+        cond do
+          roll.transaction && roll.transaction.block ->
+            {:block, dice}
+
+          roll.transaction ->
+            {:transaction, dice}
+
+          true ->
+            {:none, dice}
+        end
     end
   end
 end

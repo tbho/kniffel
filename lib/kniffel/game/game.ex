@@ -70,7 +70,7 @@ defmodule Kniffel.Game do
   def get_score_with_history(%Score{predecessor: nil} = score), do: score
 
   def get_score_with_history(%Score{predecessor: _} = score) do
-    score = Repo.preload(score, :predecessor)
+    score = Repo.preload(score, [:predecessor, transaction: [:block]])
 
     Map.update!(score, :predecessor, fn pre ->
       get_score_with_history(pre)

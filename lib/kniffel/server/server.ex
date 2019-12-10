@@ -53,7 +53,7 @@ defmodule Kniffel.Server do
     |> Repo.all()
   end
 
-  def get_authorative_servers() do
+  def get_authorized_server() do
     this_server = get_this_server()
 
     if this_server.authority do
@@ -135,16 +135,11 @@ defmodule Kniffel.Server do
         end)
         |> Map.new()
 
-      timestamp = DateTime.to_string DateTime.truncate(DateTime.utc_now(), :second)
-      IO.inspect(timestamp)
+      timestamp = DateTime.to_string(DateTime.truncate(DateTime.utc_now(), :second))
 
       signature =
         Poison.encode!(%{"dices" => dices, "timestamp" => timestamp})
-        |> IO.inspect
         |> Crypto.sign(private_key_pem)
-        |> IO.inspect
-
-      IO.inspect(private_key_pem)
 
       server = get_this_server()
 
