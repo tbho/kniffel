@@ -24,7 +24,7 @@ defmodule Kniffel.Game.Score do
 
   @doc false
   def changeset(score, attrs) do
-    server = Server.get_authorative_servers()
+    server = Server.get_authorative_servers() |> IO.inspect
 
     dices_to_roll =
       Enum.reduce(["a", "b", "c", "d", "e"], [], fn capital, acc ->
@@ -93,6 +93,11 @@ defmodule Kniffel.Game.Score do
          {_, dices} <- fetch_field(changeset, :dices),
          {_, timestamp} <- fetch_field(changeset, :inserted_at),
          %Server{} = server <- Server.get_server(server_id) do
+
+         IO.inspect(Poison.encode!(%{"dices" => dices, "timestamp" => DateTime.to_string(timestamp)}))
+         IO.inspect(signature)
+         IO.inspect(server.public_key)
+
       case Crypto.verify(
              Poison.encode!(%{"dices" => dices, "timestamp" => timestamp}),
              server.public_key,
