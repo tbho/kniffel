@@ -94,12 +94,10 @@ defmodule Kniffel.Game.Score do
          {_, timestamp} <- fetch_field(changeset, :inserted_at),
          %Server{} = server <- Server.get_server(server_id) do
 
-         IO.inspect(Poison.encode!(%{"dices" => dices, "timestamp" => DateTime.to_string(timestamp)}))
-         IO.inspect(signature)
-         IO.inspect(server.public_key)
+          {:ok, timestamp} = DateTime.from_naive(timestamp, "Etc/UTC")
 
       case Crypto.verify(
-             Poison.encode!(%{"dices" => dices, "timestamp" => timestamp}),
+             Poison.encode!(%{"dices" => dices, "timestamp" => DateTime.to_string(timestamp)}),
              server.public_key,
              signature
            ) do
