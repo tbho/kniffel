@@ -135,13 +135,15 @@ defmodule Kniffel.Server do
         end)
         |> Map.new()
 
+      timestamp = DateTime.truncate(DateTime.utc_now(), :second)
+
       signature =
-        Poison.encode!(%{"dices" => dices})
+        Poison.encode!(%{"dices" => dices, "timestamp" => timestamp})
         |> Crypto.sign(private_key_pem)
 
       server = get_this_server()
 
-      %{dices: dices, signature: signature, server_id: server.id}
+      %{dices: dices, signature: signature, server_id: server.id, timestamp: timestamp}
     end
   end
 end

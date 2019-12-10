@@ -46,7 +46,8 @@ defmodule Kniffel.Game.Score do
         ]
       )
 
-    %{"dices" => dices, "signature" => signature} = Poison.decode!(response.body)
+    %{"dices" => dices, "signature" => signature, "timestamp" => timestamp} =
+      Poison.decode!(response.body)
 
     attrs =
       attrs
@@ -54,9 +55,10 @@ defmodule Kniffel.Game.Score do
       |> Map.put("dices", dices)
       |> Map.put("signature", signature)
       |> Map.put("server", server)
+      |> Map.put("inserted_at", timestamp)
 
     score
-    |> cast(attrs, [:dices, :score_type, :signature])
+    |> cast(attrs, [:dices, :score_type, :signature, :inserted_at])
     |> put_assoc(:predecessor, attrs["predecessor"] || score.predecessor)
     |> put_assoc(:user, attrs["user"] || score.user)
     |> put_assoc(:game, attrs["game"] || score.game)
@@ -89,8 +91,13 @@ defmodule Kniffel.Game.Score do
          {_, signature} <- fetch_field(changeset, :signature),
          {_, server_id} <- fetch_field(changeset, :server_id),
          {_, dices} <- fetch_field(changeset, :dices),
+         {_, timestamp} <- fetch_field(changeset, :inserted_at),
          %Server{} = server <- Server.get_server(server_id) do
-      case Crypto.verify(Poison.encode!(dices), server.public_key, signature) do
+      case Crypto.verify(
+             Poison.encode!(%{"dices" => dices, "timestamp" => timestamp}),
+             server.public_key,
+             signature
+           ) do
         :ok ->
           changeset
 
