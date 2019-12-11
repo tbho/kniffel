@@ -28,11 +28,11 @@ html(lang="en")
             span.has-text-weight-bold.has-text-white = gettext("Kniffel")
 
       div.navbar-menu
-        = if data_for_transaction? @conn do
-          div.navbar-start
-            div.navbar-item
-              a.button.is-info.has-text-white(href="#{transaction_path(@conn, :new)}") = gettext("Save changes to transaction")
         = if @conn.assigns[:session] do
+          = if data_for_transaction? @conn do
+            div.navbar-start
+              div.navbar-item
+                a.button.is-info.has-text-white(href="#{transaction_path(@conn, :new)}") = gettext("Save changes to transaction")
           div.navbar-end
             div.navbar-item
               = form_for @conn, session_path(@conn, :delete, @conn.assigns[:session]), [method: :delete], fn _form ->
