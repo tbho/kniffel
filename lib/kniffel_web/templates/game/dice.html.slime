@@ -1,10 +1,16 @@
 div.tags.are-medium
-  = for dice <- @dices do
-    = case @location do
-      - :block ->
+  = case @location do
+    - :block ->
+      = for dice <- @dices do
         span.tag.is-success = elem(dice, 1)
-      - :transaction ->
+      span.tag.is-dark = @points
+    - :transaction ->
+      = for dice <- @dices do
         span.tag.is-warning = elem(dice, 1)
-      - :none ->
+      span.tag.is-dark = @points
+    - :none ->
+      = for dice <- @dices do
         span.tag.is-danger = elem(dice, 1)
-  span.tag.is-dark = @points
+      span.tag.is-dark = @points
+    - :sum ->
+      span.tag.is-light = @points

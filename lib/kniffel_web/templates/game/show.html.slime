@@ -16,46 +16,30 @@ div.level
           = for user <- @game.users do
             th = String.slice(user.id, 0, 7)
         tbody
-          = for type <- [:aces, :twos, :threes, :fours, :fives, :sixes] do
+          = for type <- [:aces, :twos, :threes, :fours, :fives, :sixes, :sum_up, :bonus, :sum_bonus, :three_of_a_kind, :four_of_a_kind, :full_house, :small_straight, :large_straight, :kniffel, :chance, :sum_up, :sum_down, :sum_complete] do
             tr
               td = type
               = for user <- @game.users do
                 td
-                  - score = score_exists?(@scores, user.id, type)
-                  = if score do
-                    - dices = get_rolls_to_show(score)
-                    - {location, dices} = Map.pop(dices, "location")
-                    - points = calculate_score(dices, type)
-                    = render("dice.html", dices: dices, points: points, location: location)
+                  - user_scores = Map.get(@scores, user.id)
+                  - type_score = Map.get(user_scores, type)
+                  = if type_score do
+                    = render("dice.html", type_score)
                   - else
                     p No score yet!
-          tr.is-selected
-            td sum
-          tr.is-selected
-            td bonus
-          tr.is-selected
-            td sum_bonus
-          = for type <- [:three_of_a_kind, :four_of_a_kind, :full_house, :small_straight, :large_straight, :kniffel, :chance] do
-            tr
-              td = type
-              = for user <- @game.users do
-                td
-                  - score = score_exists?(@scores, user.id, type)
-                  = if score do
-                    - dices = get_rolls_to_show(score)
-                    - {location, dices} = Map.pop(dices, "location")
-                    - points = calculate_score(dices, type)
-                    = render("dice.html", dices: dices, points: points, location: location)
-                  - else
-                    p No score yet!
-          tr.is-selected
-            td sum_up
-          tr.is-selected
-            td sum_down
-          tr.is-selected
-            td sum_complete
-
-
+          / = for type <- [] do
+          /   tr
+          /     td = type
+          /     = for user <- @game.users do
+          /       td
+          /         - score = score_exists?(@scores, user.id, type)
+          /         = if score do
+          /           - dices = get_rolls_to_show(score)
+          /           - {location, dices} = Map.pop(dices, "location")
+          /           - points = calculate_score(dices, type)
+          /           = render("dice.html", dices: dices, points: points, location: location)
+          /         - else
+          /           p No score yet!
 
 - else
   div.box
