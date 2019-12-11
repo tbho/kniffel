@@ -32,8 +32,21 @@ defmodule Kniffel.User do
   end
 
   @doc false
-  def changeset_gen_id(user, %{"private_key" => private_key, "password" => password} = attrs) do
+  def changeset_gen_id(user, %{"private_key" => ""} = attrs) do
+    {:ok, private_key} = ExPublicKey.generate_key(4096)
+    changeset_encrypt_private_key(user, private_key, attrs)
+  end
+
+  @doc false
+  def changeset_gen_id(user, %{"private_key" => private_key} = attrs) do
     {:ok, private_key} = ExPublicKey.loads(private_key)
+    changeset_encrypt_private_key(user, private_key, attrs)
+  end
+
+  @doc false
+  defp changeset_encrypt_private_key(user, private_key, %{"password" => password} = attrs) do
+    {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
+
     {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
 
     aes_256_key = :crypto.hash(:sha256, System.get_env("AES_KEY"))
