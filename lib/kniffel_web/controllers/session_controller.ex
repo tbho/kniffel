@@ -5,8 +5,7 @@ defmodule KniffelWeb.SessionController do
 
   def new(conn, _params) do
     render(conn, "new.html", %{
-      action: public_session_path(conn, :create),
-      register_url: ""
+      action: public_session_path(conn, :create)
     })
   end
 
@@ -24,6 +23,7 @@ defmodule KniffelWeb.SessionController do
     case {format, result} do
       {"html", {:ok, session}} ->
         path = get_session(conn, :redirect_url) || "/"
+        conn = delete_session(conn, :redirect_url)
 
         conn
         |> put_session(:access_token, session.access_token)
