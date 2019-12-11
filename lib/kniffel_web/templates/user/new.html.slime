@@ -18,6 +18,8 @@ div.box
         h5.title.is-5 = gettext("Repeat password")
         = password_input(user_form, :password_confirmation, class: "input", type: "password")
 
-    div.columns
-      div.column
-        = submit gettext("Create"), class: "button is-primary"
+    div.level.is-mobile
+      div.level-left
+        = submit gettext("Create"), class: "button is-primary level-item"
+      div.level-right
+        a.button.is-info.level-item(href="#{public_session_path(@conn, :new)}") Login

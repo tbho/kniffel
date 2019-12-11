@@ -47,6 +47,8 @@ defmodule KniffelWeb.Router do
     end
 
     resources "/transactions", TransactionController, only: [:new, :create]
+
+    resources("/sessions", SessionController, only: [:delete])
   end
 
   scope "/api", KniffelWeb do

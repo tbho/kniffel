@@ -155,21 +155,45 @@ defmodule Kniffel.Blockchain do
 
   def get_transaction_data(user_id) do
     scores =
-      Score
-      |> where([s], is_nil(s.transaction_id))
-      |> where([s], s.user_id == ^user_id)
-      |> where([s], s.score_type != "none")
-      |> order_by(asc: :inserted_at)
+      user_id
+      |> score_query_for_transaction
       |> Repo.all()
 
     games =
-      Game
-      |> preload(:users)
-      |> where([g], is_nil(g.transaction_id))
-      |> where([g], g.user_id == ^user_id)
+      user_id
+      |> game_query_for_transaction
       |> Repo.all()
 
     {games, scores}
+  end
+
+  def data_for_transaction?(user_id) do
+    scores =
+      user_id
+      |> score_query_for_transaction
+      |> Repo.aggregate(:count, :id)
+
+    games =
+      user_id
+      |> game_query_for_transaction
+      |> Repo.aggregate(:count, :id)
+
+    games > 0 || scores > 0
+  end
+
+  defp score_query_for_transaction(user_id) do
+    Score
+    |> where([s], is_nil(s.transaction_id))
+    |> where([s], s.user_id == ^user_id)
+    |> where([s], s.score_type != "none")
+    |> order_by(asc: :inserted_at)
+  end
+
+  defp game_query_for_transaction(user_id) do
+    Game
+    |> preload(:users)
+    |> where([g], is_nil(g.transaction_id))
+    |> where([g], g.user_id == ^user_id)
   end
 
   def create_transaction(transaction_params, user) do

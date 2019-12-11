@@ -2,10 +2,10 @@ div.box
   = form_for @conn, @finish_action, [as: :score], fn score_form ->
       div.columns
         div.column
-          h5.title.is-5 = gettext("Please select which dices to roll new!")
+          h5.title.is-5 = gettext("Please choose a categorie for your roll!")
           div.select.is-multiple
             = select(score_form, :score_type, @score_types)
 
       div.columns
         div.column
-          = submit gettext("Update"), class: "button is-primary"
+          = submit gettext("Write down"), class: "button is-primary"

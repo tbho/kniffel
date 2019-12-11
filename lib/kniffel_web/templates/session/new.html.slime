@@ -15,9 +15,11 @@ div.box
 
     div.columns
       div.column
-        h5.title.is-5 = gettext("Remember me")
         = checkbox(user_form, :remember_me, class: "checkbox")
+        = label(user_form, :remember_me, gettext("Remember me"))
 
-    div.columns
-      div.column
-        = submit gettext("Login"), class: "button is-primary"
+    div.level.is-mobile
+      div.level-left
+        = submit gettext("Login"), class: "button is-primary level-item"
+      div.level-right
+        a.button.is-info.level-item(href="#{public_user_path(@conn, :new)}") Register

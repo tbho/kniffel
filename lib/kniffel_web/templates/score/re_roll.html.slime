@@ -6,13 +6,6 @@ div.level
       i.fas.fa-caret-left
     span = gettext("Back")
 div.level
-  h2.title.is-2 = @score.id
-
-/ div.box
-/   div.tags.are-medium
-/     = for dice <- rolls do
-/       = render("roll.html", number: elem(dice, 1))
-
 = if is_allowed_to_roll_again(@score) do
   div.box
     = form_for @conn, @re_roll_action, [as: :score], fn score_form ->
@@ -34,6 +27,6 @@ div.level
 
       div.columns
         div.column
-          = submit gettext("Create"), class: "button is-primary"
+          = submit gettext("Reroll selected dices"), class: "button is-primary"
 
 = render("_score_type.html", [score: @score, conn: @conn, finish_action: @finish_action, score_types: @score_types])

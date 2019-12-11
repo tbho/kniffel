@@ -33,7 +33,17 @@ defmodule KniffelWeb.SessionController do
       {"html", {:error, :not_found}} ->
         conn
         |> put_flash(:error, gettext("failure"))
-        |> redirect(to: public_user_path(conn, :new))
+        |> redirect(to: public_session_path(conn, :new))
     end
+  end
+
+  def delete(conn, %{"id" => id}) do
+    id
+    |> Session.get_session!()
+    |> Session.delete_session()
+
+    conn
+    |> put_flash(:info, "Logged out!")
+    |> redirect(to: public_session_path(conn, :new))
   end
 end

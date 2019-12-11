@@ -170,8 +170,8 @@ defmodule Kniffel.User.Session do
   end
 
   @doc "Delete session"
-  # @spec delete_session(Session.t(), User.t()) :: {:ok, Session.t()}
-  def delete_session(session, _user) do
+  # @spec delete_session(Session.t() :: {:ok, Session.t()}
+  def delete_session(session) do
     Repo.delete(session)
   end
 end

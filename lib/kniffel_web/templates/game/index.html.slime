@@ -1,5 +1,11 @@
 div.level
   h2.title.is-2 = gettext("Game overview")
+  div.level-right
+    a.button.is-medium.is-primary(href="#{game_path(@conn, :new)}")
+      span.icon
+        i.fas.fa-plus-square
+      span = gettext("Create new Game")
+
 
 / div.box
 /   p.subtitle.is-5 Filter:

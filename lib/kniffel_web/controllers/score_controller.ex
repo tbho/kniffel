@@ -9,17 +9,24 @@ defmodule KniffelWeb.ScoreController do
       |> get_session(:user_id)
       |> User.get_user()
 
-    if !Game.is_score_without_type_for_game_and_user?(game_id, user.id) do
-      {:ok, score} = Game.create_inital_score(%{"game_id" => game_id, "user_id" => user.id})
+    cond do
+      Game.count_score_types_for_game_and_user(game_id, user.id) >= 13 ->
+        conn
+        |> put_flash(:error, "Spieler hat für dieses Spiel bereits alle Würfe gemacht!")
+        |> redirect(to: game_path(conn, :show, game_id))
 
-      conn
-      |> redirect(to: game_score_path(conn, :re_roll, game_id, score.id))
-    else
-      score = Game.get_score_without_type_for_game_and_user(game_id, user.id)
+      !Game.is_score_without_type_for_game_and_user?(game_id, user.id) ->
+        {:ok, score} = Game.create_inital_score(%{"game_id" => game_id, "user_id" => user.id})
 
-      conn
-      |> put_flash(:error, "Anderen Wurf vorher beenden")
-      |> redirect(to: game_score_path(conn, :re_roll, game_id, score.id))
+        conn
+        |> redirect(to: game_score_path(conn, :re_roll, game_id, score.id))
+
+      true ->
+        score = Game.get_score_without_type_for_game_and_user(game_id, user.id)
+
+        conn
+        |> put_flash(:error, "Anderen Wurf vorher beenden")
+        |> redirect(to: game_score_path(conn, :re_roll, game_id, score.id))
     end
   end
 

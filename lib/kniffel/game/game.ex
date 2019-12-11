@@ -191,6 +191,18 @@ defmodule Kniffel.Game do
     Repo.all(query)
   end
 
+  def count_score_types_for_game_and_user(game_id, user_id) do
+    query =
+      from s in Score,
+        where: s.game_id == ^game_id,
+        where: s.user_id == ^user_id,
+        where: s.score_type != "none",
+        where: s.score_type != "pre",
+        select: s.score_type
+
+    Repo.aggregate(query, :count, :score_type)
+  end
+
   def is_score_without_type_for_game_and_user?(game_id, user_id) do
     game_id
     |> query_score_without_type_for_game_and_user(user_id)
