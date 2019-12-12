@@ -147,8 +147,11 @@ defmodule Kniffel.Game do
   # -- Game
   # -----------------------------------------------------------------
 
-  def get_games() do
+  def get_games_for_user(user_id) do
     Game
+    |> join(:left, [g], u in assoc(g, :users))
+    # |> where([g], g.user_id == ^user_id)
+    |> where([g , u], u.id == ^user_id)
     |> Repo.all()
   end
 

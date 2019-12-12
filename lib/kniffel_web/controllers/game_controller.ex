@@ -4,7 +4,8 @@ defmodule KniffelWeb.GameController do
   alias Kniffel.{Game, User, Game.Score}
 
   def index(conn, _params) do
-    games = Game.get_games()
+    user_id = get_session(conn, :user_id)
+    games = Game.get_games_for_user(user_id)
 
     render(conn, "index.html", games: games)
   end
