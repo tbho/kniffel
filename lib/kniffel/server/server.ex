@@ -59,11 +59,23 @@ defmodule Kniffel.Server do
     if this_server.authority do
       this_server
     else
-      Server
-      |> where([s], s.authority == true)
+      authorized_server_query
       |> limit(1)
       |> Repo.one()
     end
+  end
+
+  def get_authorized_servers() do
+    this_server = get_this_server()
+
+    authorized_server_query
+    |> where([s], s.id != ^this_server.id)
+    |> Repo.all()
+  end
+
+  defp authorized_server_query() do
+    Server
+    |> where([s], s.authority == true)
   end
 
   def get_server(id) do
@@ -75,6 +87,22 @@ defmodule Kniffel.Server do
   end
 
   def get_this_server() do
+    case Kniffel.Cache.get(:server) do
+      %Server{} = server ->
+        server
+
+      nil ->
+        {:ok, private_key} = Crypto.private_key()
+        {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
+        server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+
+        server = Server.get_server(server_id)
+        Kniffel.Cache.set(:server, server)
+        server
+    end
+  end
+
+  def get_oldest_server() do
     case Kniffel.Cache.get(:server) do
       %Server{} = server ->
         server

@@ -59,9 +59,9 @@ defmodule KniffelWeb.Router do
     resources "/servers", ServerController, only: [:index, :show, :create]
     resources "/users", UserController, only: [:index, :show, :create]
     resources "/transactions", TransactionController, only: [:index, :show, :create]
-    post "/blocks/:id/propose", ServerController, :propose
-    post "/blocks/:id/prevote", ServerController, :prevote
-    post "/blocks/:id/commit", ServerController, :commit
+    post "/blocks/:id/propose", BlockController, :propose
+    post "/blocks/:id/prevote", BlockController, :prevote
+    post "/blocks/:id/commit", BlockController, :commit
     resources "/blocks", BlockController, only: [:index, :show, :create]
   end
 end

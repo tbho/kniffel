@@ -151,7 +151,7 @@ defmodule Kniffel.Game do
     Game
     |> join(:left, [g], u in assoc(g, :users))
     # |> where([g], g.user_id == ^user_id)
-    |> where([g , u], u.id == ^user_id)
+    |> where([g, u], u.id == ^user_id)
     |> Repo.all()
   end
 

@@ -45,9 +45,7 @@ config :kniffel, Kniffel.Scheduler,
     # {"@daily",         {Backup, :backup, []}}
   ]
 
-config :kniffel, Kniffel.Cache,
-  # 24 hrs
-  gc_interval: 86_400
+# config :kniffel, Kniffel.Cache,
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

@@ -6,9 +6,10 @@ defmodule Kniffel.Blockchain do
   import Ecto.Query, warn: false
 
   alias Kniffel.Repo
-  alias Kniffel.Blockchain.Block
-  alias Kniffel.Blockchain.Transaction
+  alias Kniffel.Blockchain.{Block, Transaction, Crypto}
   alias Kniffel.{Game, Game.Score, User, Server}
+
+  @block_transaction_limit 10
 
   # -----------------------------------------------------------------
   # -- Block
@@ -45,10 +46,130 @@ defmodule Kniffel.Blockchain do
     |> Repo.one()
   end
 
+  def get_block_data_ids() do
+    get_block_data_query()
+    |> select([t], t.id)
+    |> Repo.all()
+  end
+
   def get_block_data() do
+    get_block_data_query()
+    |> Repo.all()
+  end
+
+  defp get_block_data_query() do
     Transaction
     |> where([t], is_nil(t.block_index))
-    |> Repo.all()
+    |> order_by(asc: :timestamp)
+    |> limit(@block_transaction_limit)
+  end
+
+  def propose_new_block() do
+    transactions = get_block_data()
+
+    if length(transactions) > 0 do
+      transaction_data =
+        Enum.map(transactions, fn transaction ->
+          %{
+            id: transaction.id,
+            signature: transaction.signature,
+            timestamp: DateTime.to_string(transaction.timestamp)
+          }
+        end)
+
+      last_block = get_last_block()
+      servers = Server.get_authorized_servers()
+      this_server = Server.get_this_server()
+      timestamp = DateTime.to_string(DateTime.truncate(DateTime.utc_now(), :second))
+
+      {:ok, private_key} = Crypto.private_key()
+      {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
+
+      signature =
+        transaction_data
+        |> Poison.encode!()
+        |> Crypto.sign(private_key_pem)
+
+      data = %{
+        transactions: transaction_data,
+        signature: signature,
+        server_id: this_server.id,
+        timestamp: timestamp
+      }
+
+      Enum.map(servers, fn server ->
+        {:ok, response} =
+          HTTPoison.post(
+            server.url <> "/api/blocks/#{last_block.index + 1}/propose",
+            Poison.encode!(data),
+            [
+              {"Content-Type", "application/json"}
+            ]
+          )
+
+        case Poison.decode!(response.body) do
+          %{"server_id" => server_id, "signature" => signature} ->
+            if server.id == server_id do
+              signature =
+                data
+                |> Poison.encode!()
+                |> Crypto.verify(server.public_key, signature)
+
+              Kniffel.Cache.set(%{block_index: last_block + 1}, %{
+                server_id: server_id,
+                signature: signature
+              })
+            else
+              {:error, "signature wrong"}
+            end
+          {:error, %{body: message}} ->
+            {:error, message}
+        end
+      end)
+    else
+      {:error, :no_transactions_for_block}
+    end
+  end
+
+  def validate_block_proposal(transaction_params, signature, block_index, server_id) do
+    server = Server.get_server(server_id)
+    last_block = get_last_block()
+
+    :ok =
+      transaction_params
+      |> Poison.encode!()
+      |> Crypto.verify(server.public_key, signature)
+
+    true = (last_block.index == (String.to_integer(block_index) - 1))
+
+    transactions =
+      Enum.map(transaction_params, fn %{
+                                        "id" => transaction_id,
+                                        "signature" => transaction_signature,
+                                        "timestamp" => transaction_timestamp
+                                      } ->
+        %Transaction{} =
+          transaction =
+          case get_transaction(transaction_id) do
+            %Transaction{} = transaction ->
+              transaction
+
+            nil ->
+              {:ok, %{body: %{transaction: transaction_params}}} =
+                HTTPoison.get(server.url <> "/api/transactions/#{transaction_params["id"]}")
+
+              {:ok, transaction} = insert_transaction(transaction_params)
+              transaction
+          end
+
+        true = (transaction.signature == transaction_signature)
+        true = (DateTime.to_string(transaction.timestamp) == transaction_timestamp)
+
+        transaction
+      end)
+      |> Enum.sort(&(&1.timestamp < &2.timestamp))
+
+    Enum.map(transactions, & &1.id) == get_block_data_ids()
   end
 
   def create_new_block() do
@@ -153,20 +274,6 @@ defmodule Kniffel.Blockchain do
     |> Repo.get(id)
   end
 
-  def get_transaction_data(user_id) do
-    scores =
-      user_id
-      |> score_query_for_transaction
-      |> Repo.all()
-
-    games =
-      user_id
-      |> game_query_for_transaction
-      |> Repo.all()
-
-    {games, scores}
-  end
-
   def data_for_transaction?(user_id) do
     scores =
       user_id
@@ -179,6 +286,20 @@ defmodule Kniffel.Blockchain do
       |> Repo.aggregate(:count, :id)
 
     games > 0 || scores > 0
+  end
+
+  defp get_transaction_data(user_id) do
+    scores =
+      user_id
+      |> score_query_for_transaction
+      |> Repo.all()
+
+    games =
+      user_id
+      |> game_query_for_transaction
+      |> Repo.all()
+
+    {games, scores}
   end
 
   defp score_query_for_transaction(user_id) do
