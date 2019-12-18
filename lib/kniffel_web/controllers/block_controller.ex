@@ -1,7 +1,7 @@
 defmodule KniffelWeb.BlockController do
   use KniffelWeb, :controller
 
-  alias Kniffel.{Blockchain, Blockchain.Crypto, Server}
+  alias Kniffel.{Blockchain, Blockchain.Block.Propose}
 
   def index(conn, _params) do
     blocks = Blockchain.get_blocks()
@@ -23,26 +23,12 @@ defmodule KniffelWeb.BlockController do
     end
   end
 
-  def propose(
-        conn,
-        %{
-          "id" => block_id,
-          "transactions" => transaction_params,
-          "signature" => signature,
-          "server_id" => server_id
-        } = attrs
-      ) do
-    Blockchain.validate_block_proposal(transaction_params, signature, block_id, server_id)
+  def propose(conn, %{"propose" => propose}) do
+    data =
+      propose
+      |> Propose.change()
+      |> Blockchain.validate_block_proposal()
 
-    {:ok, private_key} = Crypto.private_key()
-    {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
-
-    signature =
-      attrs
-      |> Poison.encode!()
-      |> Crypto.sign(private_key_pem)
-
-    server = Server.get_this_server()
-    json(conn, %{server_id: server.id, signature: signature})
+    json(conn, data)
   end
 end

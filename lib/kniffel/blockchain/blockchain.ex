@@ -6,7 +6,7 @@ defmodule Kniffel.Blockchain do
   import Ecto.Query, warn: false
 
   alias Kniffel.Repo
-  alias Kniffel.Blockchain.{Block, Transaction, Crypto}
+  alias Kniffel.Blockchain.{Block, Block.Propose, Transaction, Crypto}
   alias Kniffel.{Game, Game.Score, User, Server}
 
   @block_transaction_limit 10
@@ -65,111 +65,99 @@ defmodule Kniffel.Blockchain do
   end
 
   def propose_new_block() do
-    transactions = get_block_data()
+    propose =
+      Map.new()
+      |> Map.put(:transactions, get_block_data())
+      |> Map.put(:block, get_last_block())
+      |> Map.put(:server, Server.get_this_server())
+      |> Propose.change()
 
-    if length(transactions) > 0 do
-      transaction_data =
-        Enum.map(transactions, fn transaction ->
-          %{
-            id: transaction.id,
-            signature: transaction.signature,
-            timestamp: DateTime.to_string(transaction.timestamp)
-          }
-        end)
+    servers = Server.get_servers()
 
-      last_block = get_last_block()
-      servers = Server.get_authorized_servers()
-      this_server = Server.get_this_server()
-      timestamp = DateTime.to_string(DateTime.truncate(DateTime.utc_now(), :second))
+    Enum.map(servers, fn server ->
+      {:ok, response} =
+        HTTPoison.post(
+          server.url <> "/api/blocks/#{propose.block_index}/propose",
+          Poison.encode!(%{propose: propose}),
+          [
+            {"Content-Type", "application/json"}
+          ]
+        )
 
-      {:ok, private_key} = Crypto.private_key()
-      {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
-
-      signature =
-        transaction_data
-        |> Poison.encode!()
-        |> Crypto.sign(private_key_pem)
-
-      data = %{
-        transactions: transaction_data,
-        signature: signature,
-        server_id: this_server.id,
-        timestamp: timestamp
-      }
-
-      Enum.map(servers, fn server ->
-        {:ok, response} =
-          HTTPoison.post(
-            server.url <> "/api/blocks/#{last_block.index + 1}/propose",
-            Poison.encode!(data),
-            [
-              {"Content-Type", "application/json"}
-            ]
-          )
-
+      data =
         case Poison.decode!(response.body) do
-          %{"server_id" => server_id, "signature" => signature} ->
-            if server.id == server_id do
-              signature =
-                data
-                |> Poison.encode!()
-                |> Crypto.verify(server.public_key, signature)
+          %{"hash" => hash, "server_id" => server_id, "signature" => signature} ->
+            true = server_id == propose.server_id
+            true = hash == Propose.hash(propose)
 
-              Kniffel.Cache.set(%{block_index: last_block + 1}, %{
-                server_id: server_id,
-                signature: signature
-              })
-            else
-              {:error, "signature wrong"}
+            signature_response_status =
+              hash
+              |> Poison.encode!()
+              |> Crypto.verify(server.public_key, signature)
+
+            case signature_response_status do
+              :ok ->
+                %{hash: hash, signature: signature}
+
+              :invalid ->
+                %{message: :signature_invalid}
             end
-          {:error, %{body: message}} ->
-            {:error, message}
+
+          %{"error" => message} ->
+            %{message: message}
         end
-      end)
+
+      Kniffel.Cache.set(%{block_index: propose.block_index, server_id: server.id}, data)
+      data
+    end)
+  end
+
+  def validate_block_proposal(%Propose{} = propose) do
+    with {:ok, propose} <- Propose.verify(propose),
+         transactions <- get_proposal_transactions(propose),
+         block_data_ids <- get_block_data_ids(),
+         true <- Enum.map(transactions, & &1.id) == block_data_ids,
+         {:ok, private_key} <- Crypto.private_key(),
+         {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key),
+         hash <- Propose.hash(propose),
+         hash_enc <- Poison.encode!(hash),
+         signature <- Crypto.sign(hash_enc, private_key_pem),
+         %Server{} = server <- Server.get_this_server() do
+      Kniffel.Cache.set(
+        %{block_index: propose.block_index, server_id: propose.server_id},
+        propose
+      )
+
+      %{server_id: server.id, signature: signature, hash: hash}
     else
-      {:error, :no_transactions_for_block}
+      {:error, message} ->
+        %{error: message}
+
+      false ->
+        %{error: :oldest_transaction_are_not_in_block}
     end
   end
 
-  def validate_block_proposal(transaction_params, signature, block_index, server_id) do
-    server = Server.get_server(server_id)
-    last_block = get_last_block()
+  def get_proposal_transactions(%Propose{} = propose) do
+    server = Server.get_server(propose.server_id)
 
-    :ok =
-      transaction_params
-      |> Poison.encode!()
-      |> Crypto.verify(server.public_key, signature)
+    Enum.map(propose.transactions, fn propose_transaction ->
+      %Transaction{} =
+        transaction =
+        case get_transaction(propose_transaction.id) do
+          %Transaction{} = transaction ->
+            transaction
 
-    true = (last_block.index == (String.to_integer(block_index) - 1))
+          nil ->
+            get_transaction_from_server(propose_transaction.id, server.url)
+        end
 
-    transactions =
-      Enum.map(transaction_params, fn %{
-                                        "id" => transaction_id,
-                                        "signature" => transaction_signature,
-                                        "timestamp" => transaction_timestamp
-                                      } ->
-        %Transaction{} =
-          transaction =
-          case get_transaction(transaction_id) do
-            %Transaction{} = transaction ->
-              transaction
+      true = transaction.signature == propose_transaction.signature
+      true = DateTime.to_string(transaction.timestamp) == propose_transaction.timestamp
 
-            nil ->
-              {:ok, %{body: %{transaction: transaction_params}}} =
-                HTTPoison.get(server.url <> "/api/transactions/#{transaction_params["id"]}")
-
-              {:ok, transaction} = insert_transaction(transaction_params)
-              transaction
-          end
-
-        true = (transaction.signature == transaction_signature)
-        true = (DateTime.to_string(transaction.timestamp) == transaction_timestamp)
-
-        transaction
-      end)
-      |> Enum.sort(&(&1.timestamp < &2.timestamp))
-
-    Enum.map(transactions, & &1.id) == get_block_data_ids()
+      transaction
+    end)
+    |> Enum.sort(&(&1.timestamp < &2.timestamp))
   end
 
   def create_new_block() do
@@ -272,6 +260,14 @@ defmodule Kniffel.Blockchain do
   def get_transaction(id) do
     Transaction
     |> Repo.get(id)
+  end
+
+  def get_transaction_from_server(id, server_url) do
+    {:ok, %{body: %{transaction: transaction_params}}} =
+      HTTPoison.get(server_url <> "/api/transactions/#{id}")
+
+    {:ok, transaction} = insert_transaction(transaction_params)
+    transaction
   end
 
   def data_for_transaction?(user_id) do
@@ -417,22 +413,22 @@ defmodule Kniffel.Blockchain do
     |> Repo.insert()
   end
 
-  @doc "Validate the complete blockchain"
-  def valid?(blockchain) when is_list(blockchain) do
-    zero =
-      Enum.reduce_while(blockchain, nil, fn prev, current ->
-        cond do
-          current == nil ->
-            {:cont, prev}
+  # @doc "Validate the complete blockchain"
+  # def valid?(blockchain) when is_list(blockchain) do
+  #   zero =
+  #     Enum.reduce_while(blockchain, nil, fn prev, current ->
+  #       cond do
+  #         current == nil ->
+  #           {:cont, prev}
 
-          Block.valid?(current, prev) ->
-            {:cont, prev}
+  #         Block.valid?(current, prev) ->
+  #           {:cont, prev}
 
-          true ->
-            {:halt, false}
-        end
-      end)
+  #         true ->
+  #           {:halt, false}
+  #       end
+  #     end)
 
-    if zero, do: Block.valid?(zero), else: false
-  end
+  #   if zero, do: Block.valid?(zero), else: false
+  # end
 end
