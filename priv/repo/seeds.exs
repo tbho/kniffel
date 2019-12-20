@@ -29,12 +29,21 @@ defmodule Kniffel.Seed do
       nil ->
         %Server{}
         |> Server.changeset(%{
-          "url" => System.get_env("URL")
+          "url" => System.get_env("URL"),
+          "public_key" => pem_string
         })
         |> Repo.insert()
     end
 
-    Server.create_server(%{"url" => "https://kniffel.app"})
+    url = "https://kniffel.app"
+
+    case Server.get_server_by_url(url) do
+      %Server{} = server ->
+        server
+
+      nil ->
+        Server.create_server(%{"url" => url})
+    end
 
     from(s in Server, where: s.url == "https://*.kniffel.app", update: [set: [authority: true]])
     |> Repo.update_all([])
@@ -49,7 +58,7 @@ defmodule Kniffel.Seed do
   end
 
   def create_users(count \\ 1) do
-    Enum.map(0..count, fn x ->
+    Enum.map(0..count, fn _x ->
       user_params = %{
         "password" => "Abc123de!",
         "password_confirmation" => "Abc123de!",
@@ -62,7 +71,7 @@ defmodule Kniffel.Seed do
   end
 
   def create_games(count, users) do
-    Enum.map(0..count, fn x ->
+    Enum.map(0..count, fn _x ->
       user = Enum.random(users)
 
       game_params = %{
@@ -116,7 +125,7 @@ defmodule Kniffel.Seed do
     users = create_users(Kernel.trunc(count / 5))
     games = create_games(Kernel.trunc(count / 2), users)
 
-    Enum.map(0..count, fn x ->
+    Enum.map(0..count, fn _x ->
       Enum.map(Enum.take_random(games, Kernel.trunc(length(games) / 2)), fn game ->
         game = Repo.preload(game, :users)
 
