@@ -41,35 +41,22 @@ defmodule Kniffel.Server do
   # -- Server
   # -----------------------------------------------------------------
 
-  def get_servers() do
-    Repo.all(Server)
-  end
-
-  def get_other_servers() do
-    this_server = get_this_server()
-
+  def get_servers(include_this_server \\ true) do
     Server
-    |> where([s], s.id != ^this_server.id)
+    |> include_this_server_query(include_this_server)
     |> Repo.all()
   end
 
-  def get_authorized_server() do
-    this_server = get_this_server()
-
-    if this_server.authority do
-      this_server
-    else
-      authorized_server_query
-      |> limit(1)
-      |> Repo.one()
-    end
+  def get_authorized_server(include_this_server \\ true) do
+    authorized_server_query
+    |> include_this_server_query(include_this_server)
+    |> limit(1)
+    |> Repo.one()
   end
 
-  def get_authorized_servers() do
-    this_server = get_this_server()
-
+  def get_authorized_servers(include_this_server \\ true) do
     authorized_server_query
-    |> where([s], s.id != ^this_server.id)
+    |> include_this_server_query(include_this_server)
     |> Repo.all()
   end
 
@@ -77,6 +64,13 @@ defmodule Kniffel.Server do
     Server
     |> where([s], s.authority == true)
   end
+
+  defp include_this_server_query(query, false) do
+    this_server = get_this_server()
+    where(query, [s], s.id != ^this_server.id)
+  end
+
+  defp include_this_server_query(query, true), do: query
 
   def get_server(id) do
     Repo.get(Server, id)
@@ -102,25 +96,25 @@ defmodule Kniffel.Server do
     end
   end
 
-  def get_oldest_server() do
-    case Kniffel.Cache.get(:server) do
-      %Server{} = server ->
-        server
+  # def get_oldest_server() do
+  #   case Kniffel.Cache.get(:server) do
+  #     %Server{} = server ->
+  #       server
 
-      nil ->
-        {:ok, private_key} = Crypto.private_key()
-        {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
-        server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+  #     nil ->
+  #       {:ok, private_key} = Crypto.private_key()
+  #       {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
+  #       server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
 
-        server = Server.get_server(server_id)
-        Kniffel.Cache.set(:server, server)
-        server
-    end
-  end
+  #       server = Server.get_server(server_id)
+  #       Kniffel.Cache.set(:server, server)
+  #       server
+  #   end
+  # end
 
   def create_server(%{"url" => url}) do
     {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
-    {:ok, server} = Poison.decode(response.body)
+    {:ok, server} = Poison.decode(response.body) |> IO.inspect()
 
     {:ok, server} =
       %Server{}

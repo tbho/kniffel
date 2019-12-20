@@ -10,13 +10,12 @@ defmodule Kniffel.Application do
     children = [
       # Start the Ecto repository
       Kniffel.Repo,
+      # Start the Nebulex Cache
+      Kniffel.Cache,
       # Start the endpoint when the application starts
       KniffelWeb.Endpoint,
-      # Starts a worker by calling: Kniffel.Worker.start_link(arg)
-      # {Kniffel.Worker, arg},
-      Kniffel.Scheduler,
-      # Start the Nebulex Cache
-      Kniffel.Cache
+      # Starts the sheduling service for proposal and creation of new blocks
+      Kniffel.Scheduler
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

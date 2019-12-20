@@ -6,7 +6,7 @@ defmodule Kniffel.Blockchain do
   import Ecto.Query, warn: false
 
   alias Kniffel.Repo
-  alias Kniffel.Blockchain.{Block, Block.Propose, Transaction, Crypto}
+  alias Kniffel.Blockchain.{Block, Block.Propose, Block.ProposeResponse, Transaction}
   alias Kniffel.{Game, Game.Score, User, Server}
 
   @block_transaction_limit 10
@@ -72,7 +72,7 @@ defmodule Kniffel.Blockchain do
       |> Map.put(:server, Server.get_this_server())
       |> Propose.change()
 
-    servers = Server.get_servers()
+    servers = Server.get_authorized_servers(true)
 
     Enum.map(servers, fn server ->
       {:ok, response} =
@@ -84,31 +84,19 @@ defmodule Kniffel.Blockchain do
           ]
         )
 
-      data =
-        case Poison.decode!(response.body) do
-          %{"hash" => hash, "server_id" => server_id, "signature" => signature} ->
-            true = server_id == propose.server_id
-            true = hash == Propose.hash(propose)
+      with %{"propose_response" => propose_response} <- Poison.decode!(response.body),
+           %ProposeResponse{} = propose_response <- ProposeResponse.change(propose_response),
+           {:ok, propose_response} <- ProposeResponse.verify(propose, propose_response),
+           true <- propose_response.server_id == server.id do
+        propose_response
+        # Kniffel.Cache.set(%{block_index: propose.block_index, server_id: server.id}, data)
+      else
+        false ->
+          {:error, :server_id_does_not_match}
 
-            signature_response_status =
-              hash
-              |> Poison.encode!()
-              |> Crypto.verify(server.public_key, signature)
-
-            case signature_response_status do
-              :ok ->
-                %{hash: hash, signature: signature}
-
-              :invalid ->
-                %{message: :signature_invalid}
-            end
-
-          %{"error" => message} ->
-            %{message: message}
-        end
-
-      Kniffel.Cache.set(%{block_index: propose.block_index, server_id: server.id}, data)
-      data
+        {:error, message} ->
+          {:error, message}
+      end
     end)
   end
 
@@ -116,25 +104,31 @@ defmodule Kniffel.Blockchain do
     with {:ok, propose} <- Propose.verify(propose),
          transactions <- get_proposal_transactions(propose),
          block_data_ids <- get_block_data_ids(),
-         true <- Enum.map(transactions, & &1.id) == block_data_ids,
-         {:ok, private_key} <- Crypto.private_key(),
-         {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key),
-         hash <- Propose.hash(propose),
-         hash_enc <- Poison.encode!(hash),
-         signature <- Crypto.sign(hash_enc, private_key_pem),
-         %Server{} = server <- Server.get_this_server() do
-      Kniffel.Cache.set(
-        %{block_index: propose.block_index, server_id: propose.server_id},
-        propose
-      )
+         true <- Enum.map(transactions, & &1.id) == block_data_ids do
+      propose_response =
+        Map.new()
+        |> Map.put(:propose, propose)
+        |> Map.put(:server, Server.get_this_server())
+        |> ProposeResponse.change()
 
-      %{server_id: server.id, signature: signature, hash: hash}
+      # Kniffel.Cache.set(
+      #   %{block_index: propose.block_index, server_id: propose.server_id},
+      #   %{propose: propose, propose_response: propose_response}
+      # )
+
+      propose_response
     else
       {:error, message} ->
-        %{error: message}
+        Map.new()
+        |> Map.put(:error, message)
+        |> Map.put(:server, Server.get_this_server())
+        |> ProposeResponse.change()
 
       false ->
-        %{error: :oldest_transaction_are_not_in_block}
+        Map.new()
+        |> Map.put(:error, :oldest_transaction_are_not_in_block)
+        |> Map.put(:server, Server.get_this_server())
+        |> ProposeResponse.change()
     end
   end
 
@@ -162,6 +156,7 @@ defmodule Kniffel.Blockchain do
 
   def create_new_block() do
     transactions = get_block_data()
+    proposals = %{}
 
     if length(transactions) > 0 do
       transaction_data =
@@ -169,7 +164,7 @@ defmodule Kniffel.Blockchain do
           Map.take(transaction, [:id, :signature, :timestamp, :server_id, :game_id, :data])
         end)
 
-      data = Poison.encode!(%{"transactions" => transaction_data})
+      data = Poison.encode!(%{"proposals" => proposals, "transactions" => transaction_data})
 
       last_block = get_last_block()
 
@@ -186,7 +181,7 @@ defmodule Kniffel.Blockchain do
         |> Block.changeset_create(block_params)
         |> Repo.insert()
 
-      servers = Server.get_other_servers()
+      servers = Server.get_servers(false)
 
       Enum.map(servers, fn server ->
         HTTPoison.post(
@@ -245,6 +240,31 @@ defmodule Kniffel.Blockchain do
 
       nil ->
         {:unknown_server, server_id}
+    end
+  end
+
+  def calculate_ages_of_servers() do
+    servers = Server.get_authorized_servers()
+    calculate_ages_of_servers(0, 10, servers)
+  end
+
+  def calculate_ages_of_servers(offset, limit, servers, result \\ %{}) do
+    blocks =
+      Block
+      |> order_by(desc: :index)
+      |> limit(^limit)
+      |> offset(^offset)
+      |> Repo.all()
+
+    {result, offset} =
+      Enum.reduce(blocks, {result, offset}, fn block, {result, offset} ->
+        {Map.put_new(result, block.server_id, offset), offset + 1}
+      end)
+
+    if Enum.all?(servers, fn server -> Map.get(result, server.id) != nil end) do
+      result
+    else
+      calculate_ages_of_servers(offset, limit, servers, result)
     end
   end
 
@@ -359,7 +379,7 @@ defmodule Kniffel.Blockchain do
         |> Transaction.changeset_create(transaction_params)
         |> Repo.insert()
 
-      servers = Server.get_other_servers()
+      servers = Server.get_servers(false)
 
       Enum.map(servers, fn server ->
         HTTPoison.post(
