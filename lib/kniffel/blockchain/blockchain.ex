@@ -86,6 +86,7 @@ defmodule Kniffel.Blockchain do
 
       with %{"propose_response" => propose_response} <- Poison.decode!(response.body),
            %ProposeResponse{} = propose_response <- ProposeResponse.change(propose_response),
+           IO.inspect(propose_response),
            {:ok, propose_response} <- ProposeResponse.verify(propose, propose_response),
            true <- propose_response.server_id == server.id do
         propose_response
