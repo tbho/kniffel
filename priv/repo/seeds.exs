@@ -45,7 +45,7 @@ defmodule Kniffel.Seed do
         Server.create_server(%{"url" => url})
     end
 
-    from(s in Server, where: s.url == "https://*.kniffel.app", update: [set: [authority: true]])
+    from(s in Server, where: s.url == "https://kniffel.app", update: [set: [authority: true]])
     |> Repo.update_all([])
 
     case Blockchain.get_block(0) do
@@ -140,6 +140,7 @@ defmodule Kniffel.Seed do
           &create_transaction(&1)
         )
 
+        Blockchain.propose_new_block()
         Blockchain.create_new_block()
 
         scores_second = Enum.take_random(scores_first, Kernel.trunc(length(scores_first) / 2))
@@ -158,6 +159,7 @@ defmodule Kniffel.Seed do
           &create_transaction(&1)
         )
 
+        Blockchain.propose_new_block()
         Blockchain.create_new_block()
 
         scores_third = Enum.take_random(scores_second, Kernel.trunc(length(scores_second) / 2))
@@ -176,12 +178,15 @@ defmodule Kniffel.Seed do
           &create_transaction(&1)
         )
 
+        Blockchain.propose_new_block()
         Blockchain.create_new_block()
 
         (scores_first ++ scores_second ++ scores_third)
         |> Enum.map(&update_score(&1))
 
         Enum.map(users, &create_transaction(&1))
+
+        Blockchain.propose_new_block()
         Blockchain.create_new_block()
       end)
     end)
@@ -189,7 +194,7 @@ defmodule Kniffel.Seed do
 end
 
 Kniffel.Seed.init_database()
-# Kniffel.Seed.create_transactions(4)
+Kniffel.Seed.create_transactions(10)
 
 # if System.get_env("ENV_NAME") != "production" do
 #   Code.eval_file(

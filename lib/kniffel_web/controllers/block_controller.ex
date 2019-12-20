@@ -1,7 +1,7 @@
 defmodule KniffelWeb.BlockController do
   use KniffelWeb, :controller
 
-  alias Kniffel.{Blockchain, Blockchain.Block.Propose, Blockchain.Block.ProposeResponse}
+  alias Kniffel.{Blockchain, Blockchain.Block.Propose, Blockchain.Block.ServerResponse}
 
   def index(conn, _params) do
     blocks = Blockchain.get_blocks()
@@ -29,6 +29,6 @@ defmodule KniffelWeb.BlockController do
       |> Propose.change()
       |> Blockchain.validate_block_proposal()
 
-    json(conn, %{propose_response: ProposeResponse.json(propose_response)})
+    json(conn, %{propose_response: ServerResponse.json(propose_response)})
   end
 end
