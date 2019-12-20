@@ -48,14 +48,14 @@ defmodule Kniffel.Server do
   end
 
   def get_authorized_server(include_this_server \\ true) do
-    authorized_server_query
+    authorized_server_query()
     |> include_this_server_query(include_this_server)
     |> limit(1)
     |> Repo.one()
   end
 
   def get_authorized_servers(include_this_server \\ true) do
-    authorized_server_query
+    authorized_server_query()
     |> include_this_server_query(include_this_server)
     |> Repo.all()
   end
@@ -114,7 +114,7 @@ defmodule Kniffel.Server do
 
   def create_server(%{"url" => url}) do
     {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
-    {:ok, server} = Poison.decode(response.body) |> IO.inspect()
+    {:ok, server} = Poison.decode(response.body)
 
     {:ok, server} =
       %Server{}

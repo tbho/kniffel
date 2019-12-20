@@ -84,12 +84,10 @@ defmodule Kniffel.Blockchain.Block.ProposeResponse do
   end
 
   def verify(%Propose{} = propose, %ProposeResponse{error: :none} = propose_response) do
-    IO.inspect(propose)
-    IO.inspect(propose_response)
-    with %Server{} = server <- Server.get_server(propose.server_id),
+    with %Server{} = server <- Server.get_server(propose_response.server_id),
          true <- propose_response.hash == Propose.hash(propose),
          data_enc <-
-           Poison.encode!(%{hash: propose_response.hash, error: propose_response.error}) |> IO.inspect,
+           Poison.encode!(%{hash: propose_response.hash, error: propose_response.error}),
          :ok <- Crypto.verify(data_enc, server.public_key, propose_response.signature) do
       {:ok, propose_response}
     else
