@@ -380,7 +380,7 @@ defmodule Kniffel.Blockchain do
   def get_transaction_from_server(id, server_url) do
     {:ok, response} =
       HTTPoison.get(server_url <> "/api/transactions/#{id}")
-    %{"transaction" => transaction_params} = Poison.decode!(response.body),
+    %{"transaction" => transaction_params} = Poison.decode!(response.body)
 
     {:ok, transaction} = insert_transaction(transaction_params)
     transaction
