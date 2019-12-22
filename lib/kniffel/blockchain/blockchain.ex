@@ -81,7 +81,7 @@ defmodule Kniffel.Blockchain do
 
       Kniffel.Cache.set({:propose, block_index: propose.block_index}, propose)
 
-      Server.get_authorized_servers(true)
+      Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
         {:ok, response} =
           HTTPoison.post(
@@ -220,16 +220,17 @@ defmodule Kniffel.Blockchain do
         |> Block.changeset_create(block_params)
         |> Repo.insert()
 
-      servers = Server.get_authorized_servers(true)
+      servers = Server.get_authorized_servers(false)
 
       Enum.map(servers, fn server ->
-        HTTPoison.post(
+        {:ok, response} = HTTPoison.post(
           server.url <> "/api/blocks",
           Poison.encode!(%{block: Block.json_encode(block)}),
           [
             {"Content-Type", "application/json"}
           ]
         )
+        IO.inspect(Poison.decode(response.body))
       end)
 
       {:ok, block}

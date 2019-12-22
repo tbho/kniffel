@@ -8,10 +8,10 @@ defmodule Kniffel.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      # Start the Ecto repository
-      Kniffel.Repo,
       # Start the Nebulex Cache
       Kniffel.Cache,
+      # Start the Ecto repository
+      Kniffel.Repo,
       # Start the endpoint when the application starts
       KniffelWeb.Endpoint,
       # Starts the sheduling service for proposal and creation of new blocks
