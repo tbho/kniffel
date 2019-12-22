@@ -14,7 +14,7 @@ defmodule Kniffel.Game.Score do
     field(:score_type, ScoreType, default: :none)
     field :signature, :string
 
-    belongs_to(:predecessor, Kniffel.Game.Score)
+    belongs_to(:predecessor, Kniffel.Game.Score, type: :id)
     belongs_to(:user, Kniffel.User, type: :string)
     belongs_to(:game, Kniffel.Game)
     belongs_to(:server, Kniffel.Server, type: :string)

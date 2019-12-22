@@ -426,7 +426,7 @@ defmodule Kniffel.Blockchain do
     |> where([s], is_nil(s.transaction_id))
     |> where([s], s.user_id == ^user_id)
     |> where([s], s.score_type != "none")
-    |> order_by(asc: :inserted_at)
+    |> order_by(asc: :id)
   end
 
   defp game_query_for_transaction(user_id) do
