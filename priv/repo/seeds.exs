@@ -194,7 +194,7 @@ defmodule Kniffel.Seed do
 end
 
 Kniffel.Seed.init_database()
-# Kniffel.Seed.create_transactions(10)
+Kniffel.Seed.create_transactions(10)
 
 # if System.get_env("ENV_NAME") != "production" do
 #   Code.eval_file(
