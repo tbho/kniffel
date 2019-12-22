@@ -113,8 +113,7 @@ defmodule Kniffel.Server do
   # end
 
   def create_server(%{"url" => url}) do
-    IO.inspect(url)
-    {:ok, response} = HTTPoison.get(url <> "/api/servers/this") |> IO.inspect
+    {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
     {:ok, server} = Poison.decode(response.body)
 
     {:ok, server} =
