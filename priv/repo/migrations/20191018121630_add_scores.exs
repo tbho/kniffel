@@ -12,7 +12,7 @@ defmodule Kniffel.Repo.Migrations.AddScores do
       add :game_id, references(:game, type: :uuid)
       add :score_type, :score_type
 
-      add :transaction_id, references(:transaction, type: :uuid)
+      add :transaction_id, references(:transaction, type: :id)
 
       timestamps()
     end

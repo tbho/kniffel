@@ -47,6 +47,7 @@ defmodule Kniffel.Blockchain do
     |> order_by(desc: :index)
     |> limit(1)
     |> Repo.one()
+    |> IO.inspect
   end
 
   def get_block_data_ids() do
@@ -120,6 +121,7 @@ defmodule Kniffel.Blockchain do
   end
 
   def validate_block_proposal(%Propose{} = propose) do
+    IO.inspect(propose)
     with {:ok, propose} <- Propose.verify(propose),
          transactions <- get_proposal_transactions(propose),
          block_data_ids <- get_block_data_ids(),
@@ -135,6 +137,7 @@ defmodule Kniffel.Blockchain do
         %{propose: propose, propose_response: propose_response}
       )
 
+      IO.inspect(propose_response)
       propose_response
     else
       {:error, message} ->
@@ -142,6 +145,7 @@ defmodule Kniffel.Blockchain do
         |> Map.put(:error, message)
         |> Map.put(:server, Server.get_this_server())
         |> ServerResponse.change()
+        |> IO.inspect
 
       false ->
         Map.new()
@@ -284,7 +288,8 @@ defmodule Kniffel.Blockchain do
             propose_response_params
             |> ServerResponse.change()
 
-          ServerResponse.verify(propose, propose_response)
+            {:ok, propose_response} = ServerResponse.verify(propose, propose_response)
+            propose_response
         end)
         |> Enum.count(&(%ServerResponse{} = &1))
 

@@ -11,7 +11,7 @@ defmodule Kniffel.Blockchain.Block do
   @hash_fields [:server_id, :timestamp, :signature, :proof | @sign_fields]
 
   @primary_key {:index, :id, autogenerate: false}
-  @foreign_key_type :index
+  @foreign_key_type :id
 
   schema "block" do
     field :pre_hash, :string
