@@ -4,7 +4,7 @@ defmodule Kniffel.Repo.Migrations.AddGame do
   def change do
     create table("game", primary_key: false) do
       add :id, :uuid, primary_key: true
-      add :transaction_id, references(:transaction, type: :id)
+      add :transaction_id, references(:transaction, type: :uuid)
 
       timestamps()
     end

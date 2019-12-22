@@ -6,7 +6,7 @@ defmodule Kniffel.Game.Score do
   alias Kniffel.Blockchain.Crypto
   alias Kniffel.Game.Score
 
-  @primary_key {:id, :binary_id, autogenerate: true}
+  @primary_key {:id, :id, autogenerate: true}
   @foreign_key_type :binary_id
 
   schema "score" do

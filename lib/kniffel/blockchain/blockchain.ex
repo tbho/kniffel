@@ -480,6 +480,7 @@ defmodule Kniffel.Blockchain do
         %Transaction{}
         |> Repo.preload([:user, :block])
         |> Transaction.changeset_create(transaction_params)
+        |> IO.inspect
         |> Repo.insert()
 
       servers = Server.get_servers(false)

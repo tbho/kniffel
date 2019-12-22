@@ -10,8 +10,8 @@ defmodule Kniffel.Blockchain.Transaction do
 
   @sign_fields [:data, :timestamp]
 
-  @primary_key {:id, :id, autogenerate: true}
-  @foreign_key_type :id
+  @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
 
   schema "transaction" do
     field :signature, :string

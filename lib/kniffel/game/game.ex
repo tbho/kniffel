@@ -121,6 +121,7 @@ defmodule Kniffel.Game do
     %Score{}
     |> Repo.preload([:predecessor, :game, :user, :transaction, :server])
     |> Score.changeset(score_params)
+    |> IO.inspect
     |> Repo.insert()
   end
 
