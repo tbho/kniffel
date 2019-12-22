@@ -47,7 +47,6 @@ defmodule Kniffel.Blockchain do
     |> order_by(desc: :index)
     |> limit(1)
     |> Repo.one()
-    |> IO.inspect
   end
 
   def get_block_data_ids() do
@@ -84,7 +83,6 @@ defmodule Kniffel.Blockchain do
 
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
-        IO.inspect(propose)
         {:ok, response} =
           HTTPoison.post(
             server.url <> "/api/blocks/#{propose.block_index}/propose",
@@ -105,7 +103,7 @@ defmodule Kniffel.Blockchain do
             [propose_response] ++ results
           )
 
-          IO.inspect(propose_response)
+          propose_response
         else
           false ->
             {:error, :server_id_does_not_match}
@@ -113,7 +111,6 @@ defmodule Kniffel.Blockchain do
           {:error, message} ->
             {:error, message}
         end
-        |> IO.inspect
       end)
     else
       {:error, :no_transactions_for_block}
@@ -121,7 +118,6 @@ defmodule Kniffel.Blockchain do
   end
 
   def validate_block_proposal(%Propose{} = propose) do
-    IO.inspect(propose)
     with {:ok, propose} <- Propose.verify(propose),
          transactions <- get_proposal_transactions(propose),
          block_data_ids <- get_block_data_ids(),
@@ -137,7 +133,6 @@ defmodule Kniffel.Blockchain do
         %{propose: propose, propose_response: propose_response}
       )
 
-      IO.inspect(propose_response)
       propose_response
     else
       {:error, message} ->
@@ -145,7 +140,6 @@ defmodule Kniffel.Blockchain do
         |> Map.put(:error, message)
         |> Map.put(:server, Server.get_this_server())
         |> ServerResponse.change()
-        |> IO.inspect
 
       false ->
         Map.new()
@@ -190,7 +184,7 @@ defmodule Kniffel.Blockchain do
       true = propose.server_id == Server.get_this_server().id
 
       propose_response_count =
-        Enum.filter(propose_response|> IO.inspect, &(&1.error == :none)) ||
+        Enum.filter(propose_response, &(&1.error == :none)) ||
           []
           |> length
 
@@ -236,7 +230,6 @@ defmodule Kniffel.Blockchain do
             {"Content-Type", "application/json"}
           ]
         )
-        IO.inspect(Poison.decode(response.body))
       end)
 
       {:ok, block}
@@ -480,12 +473,9 @@ defmodule Kniffel.Blockchain do
         %Transaction{}
         |> Repo.preload([:user, :block])
         |> Transaction.changeset_create(transaction_params)
-        |> IO.inspect
         |> Repo.insert()
 
       servers = Server.get_servers(false)
-
-      IO.inspect(transaction)
 
       Enum.map(servers, fn server ->
         HTTPoison.post(

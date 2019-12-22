@@ -95,8 +95,8 @@ defmodule Kniffel.Blockchain.Block.Propose do
   end
 
   def verify(%Propose{} = propose) do
-    with {:server, %Server{} = server} <- {:server, Server.get_server(propose.server_id) |> IO.inspect},
-         {:block, %Block{} = last_block} <- {:block, Blockchain.get_last_block() |> IO.inspect},
+    with {:server, %Server{} = server} <- {:server, Server.get_server(propose.server_id)},
+         {:block, %Block{} = last_block} <- {:block, Blockchain.get_last_block()},
          true <- last_block.index == propose.block_index - 1,
          data <- Map.take(propose, @crypto_fields),
          data_enc <- Poison.encode!(data),
