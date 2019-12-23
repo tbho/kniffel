@@ -47,8 +47,6 @@ defmodule Kniffel.User do
   defp changeset_encrypt_private_key(user, private_key, %{"password" => password} = attrs) do
     {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
 
-    {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
-
     aes_256_key = :crypto.hash(:sha256, System.get_env("AES_KEY"))
 
     {:ok, {_pw, {init_vec, cipher_text, cipher_tag}}} =

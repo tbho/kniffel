@@ -188,7 +188,7 @@ defmodule Kniffel.Blockchain do
           []
           |> length
 
-      true = propose_response_count >= calculate_min_propose_response_count
+      true = propose_response_count >= calculate_min_propose_response_count()
 
       transactions = get_block_data()
 
@@ -306,7 +306,7 @@ defmodule Kniffel.Blockchain do
         end)
         |> Enum.count(&(%ServerResponse{} = &1))
 
-      true = propose_response_count >= calculate_min_propose_response_count
+      true = propose_response_count >= calculate_min_propose_response_count()
 
       block_params =
         block_params
@@ -325,7 +325,7 @@ defmodule Kniffel.Blockchain do
       |> Map.put(:server, Server.get_this_server())
       |> ServerResponse.change()
     else
-      %Block{} = block ->
+      %Block{} = _block ->
         Map.new()
         |> Map.put(:error, :index_blocked)
         |> Map.put(:server, Server.get_this_server())
@@ -385,7 +385,7 @@ defmodule Kniffel.Blockchain do
   end
 
   def calculate_min_propose_response_count() do
-    twothirds = length(get_active_servers) / 3 * 2
+    twothirds = length(get_active_servers()) / 3 * 2
     if twothirds < 1, do: 1, else: Kernel.trunc(twothirds)
   end
 
