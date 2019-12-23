@@ -220,16 +220,36 @@ defmodule Kniffel.Blockchain do
         |> Block.changeset_create(block_params)
         |> Repo.insert()
 
-      servers = Server.get_authorized_servers(false)
+      Server.get_authorized_servers(false)
+      |> Enum.map(fn server ->
+        {:ok, response} =
+          HTTPoison.post(
+            server.url <> "/api/blocks",
+            Poison.encode!(%{block: Block.json_encode(block)}),
+            [
+              {"Content-Type", "application/json"}
+            ]
+          )
 
-      Enum.map(servers, fn server ->
-        {:ok, response} = HTTPoison.post(
-          server.url <> "/api/blocks",
-          Poison.encode!(%{block: Block.json_encode(block)}),
-          [
-            {"Content-Type", "application/json"}
-          ]
-        )
+        with %{"block_response" => block_response} <- Poison.decode!(response.body),
+             %ServerResponse{} = block_response <- ServerResponse.change(block_response),
+             {:ok, block_response} <- ServerResponse.verify(block, block_response),
+             true <- block_response.server_id == server.id do
+          results = Kniffel.Cache.get({:propose_response, block_index: propose.block_index}) || []
+
+          Kniffel.Cache.set(
+            {:block_response, block_index: block.block_index},
+            [block_response] ++ results
+          )
+
+          block_response
+        else
+          false ->
+            {:error, :server_id_does_not_match}
+
+          {:error, message} ->
+            {:error, message}
+        end
       end)
 
       {:ok, block}
@@ -281,8 +301,8 @@ defmodule Kniffel.Blockchain do
             propose_response_params
             |> ServerResponse.change()
 
-            {:ok, propose_response} = ServerResponse.verify(propose, propose_response)
-            propose_response
+          {:ok, propose_response} = ServerResponse.verify(propose, propose_response)
+          propose_response
         end)
         |> Enum.count(&(%ServerResponse{} = &1))
 
@@ -306,10 +326,16 @@ defmodule Kniffel.Blockchain do
       |> ServerResponse.change()
     else
       %Block{} = block ->
-        {:index_blocked, block}
+        Map.new()
+        |> Map.put(:error, :index_blocked)
+        |> Map.put(:server, Server.get_this_server())
+        |> ServerResponse.change()
 
       nil ->
-        {:unknown_server, server_id}
+        Map.new()
+        |> Map.put(:error, :unknown_server)
+        |> Map.put(:server, Server.get_this_server())
+        |> ServerResponse.change()
     end
   end
 
@@ -378,8 +404,7 @@ defmodule Kniffel.Blockchain do
   end
 
   def get_transaction_from_server(id, server_url) do
-    {:ok, response} =
-      HTTPoison.get(server_url <> "/api/transactions/#{id}")
+    {:ok, response} = HTTPoison.get(server_url <> "/api/transactions/#{id}")
     %{"transaction" => transaction_params} = Poison.decode!(response.body)
 
     {:ok, transaction} = insert_transaction(transaction_params)

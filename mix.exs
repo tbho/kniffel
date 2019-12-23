@@ -67,7 +67,7 @@ defmodule Kniffel.MixProject do
   defp aliases do
     [
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "cleanup": ["run priv/repo/cleanup.exs"],
+      cleanup: ["run priv/repo/cleanup.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate", "test"]
     ]

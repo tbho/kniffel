@@ -14,13 +14,10 @@ defmodule KniffelWeb.BlockController do
   end
 
   def create(conn, %{"block" => block_params}) do
-    case Blockchain.insert_block(block_params) do
-      {:ok, block} ->
-        render(conn, "show.json", block: block)
+    block_response = Blockchain.insert_block(block_params)
 
-      {:error, message} ->
-        json(conn, %{error: message})
-    end
+    json(conn, %{block_response: ServerResponse.json(block_response)})
+    # render(conn, "show.json", block: block)
   end
 
   def propose(conn, %{"propose" => propose}) do
