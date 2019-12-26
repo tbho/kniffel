@@ -456,33 +456,33 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  def handle_cancel_block_propose(%{
-        "server_id" => server_id,
-        "round_number" => round_number,
-        "reason" => reason
-      }) do
-    with %Server{authority: true} = server <- Server.get_server(server_id) do
-      case reason do
-        :no_transaction ->
-          :ok
+  # def handle_cancel_block_propose(%{
+  #       "server_id" => server_id,
+  #       "round_number" => round_number,
+  #       "reason" => reason
+  #     }) do
+  #   with %Server{authority: true} = server <- Server.get_server(server_id) do
+  #     case reason do
+  #       :no_transaction ->
+  #         :ok
 
-        # cancel timers and wait for next round
-        # validate there a no transactions with timestamp before propose_start
+  #       # cancel timers and wait for next round
+  #       # validate there a no transactions with timestamp before propose_start
 
-        :timeout ->
-          get_round_times(round_number)
+  #       :timeout ->
+  #         get_round_times(round_number)
 
-        # compare DateTime.now() to round_times
+  #       # compare DateTime.now() to round_times
 
-        :not_valid ->
-          :ok
-          # cancel timers and wait for next round
-      end
-    else
-      nil ->
-        {:unknown_server, server_id}
-    end
-  end
+  #       :not_valid ->
+  #         :ok
+  #         # cancel timers and wait for next round
+  #     end
+  #   else
+  #     nil ->
+  #       {:unknown_server, server_id}
+  #   end
+  # end
 
   def calculate_ages_of_servers() do
     servers = Server.get_authorized_servers()

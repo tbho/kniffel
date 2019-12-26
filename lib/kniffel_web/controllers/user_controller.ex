@@ -42,7 +42,7 @@ defmodule KniffelWeb.UserController do
 
   def create("html", conn, %{"user" => user}) do
     case User.create_user(user) do
-      {:ok, user} ->
+      {:ok, _user} ->
         conn
         |> put_flash(:info, "Created!")
         |> redirect(to: public_session_path(conn, :new))
