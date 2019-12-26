@@ -142,10 +142,10 @@ defmodule Kniffel.User.Session do
   @doc "Creates a session for a user identified by email and password"
   # @spec create_session(String.t(), String.t(), Map.t()) ::
   # {:ok, Session.t()} | {:error, atom}
-  def create_session(id, password, params) do
+  def create_session(user_name, password, params) do
     with {:ok, user} <-
            User
-           |> Repo.get(id)
+           |> Repo.get_by(user_name: user_name)
            |> Comeonin.Argon2.check_pass(password),
          {:ok, session} <-
            user

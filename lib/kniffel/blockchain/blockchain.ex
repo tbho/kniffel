@@ -6,7 +6,7 @@ defmodule Kniffel.Blockchain do
   import Ecto.Query, warn: false
 
   alias Kniffel.Repo
-  alias Kniffel.Blockchain.{Block, Block.Propose, Block.ServerResponse, Transaction}
+  alias Kniffel.Blockchain.{Crypto, Block, Block.Propose, Block.ServerResponse, Transaction, Sheduler}
   alias Kniffel.{Game, Game.Score, User, Server}
 
   @block_transaction_limit 10
@@ -30,7 +30,8 @@ defmodule Kniffel.Blockchain do
 
   def genesis() do
     block_params = %{
-      data: Poison.encode!("So it begins! - King Théoden"),
+      data:
+        Poison.encode!(%{"propose_response" => [], "transactions" => [], "round_length" => 30}),
       pre_hash: "ZERO_HASH",
       index: 0,
       transactions: []
@@ -68,58 +69,59 @@ defmodule Kniffel.Blockchain do
   end
 
   def propose_new_block() do
-    if length(get_block_data()) > 0 do
-      propose =
-        Map.new()
-        |> Map.put(:transactions, get_block_data())
-        |> Map.put(:block, get_last_block())
-        |> Map.put(:server, Server.get_this_server())
-        |> Propose.change()
+    block_data = get_block_data()
 
-      Kniffel.Cache.delete({:propose, block_index: propose.block_index})
-      Kniffel.Cache.delete({:propose_response, block_index: propose.block_index})
+    propose =
+      Map.new()
+      |> Map.put(:transactions, block_data)
+      |> Map.put(:block, get_last_block())
+      |> Map.put(:server, Server.get_this_server())
+      |> Propose.change()
 
-      Kniffel.Cache.set({:propose, block_index: propose.block_index}, propose)
+    Kniffel.Cache.delete({:propose, block_index: propose.block_index})
+    Kniffel.Cache.delete({:propose_response, block_index: propose.block_index})
 
-      Server.get_authorized_servers(false)
-      |> Enum.map(fn server ->
-        {:ok, response} =
-          HTTPoison.post(
-            server.url <> "/api/blocks/#{propose.block_index}/propose",
-            Poison.encode!(%{propose: propose}),
-            [
-              {"Content-Type", "application/json"}
-            ]
-          )
+    Kniffel.Cache.set({:propose, block_index: propose.block_index}, propose)
 
-        with %{"propose_response" => propose_response} <- Poison.decode!(response.body),
-             %ServerResponse{} = propose_response <- ServerResponse.change(propose_response),
-             {:ok, propose_response} <- ServerResponse.verify(propose, propose_response),
-             true <- propose_response.server_id == server.id do
-          results = Kniffel.Cache.get({:propose_response, block_index: propose.block_index}) || []
+    Server.get_authorized_servers(false)
+    |> Enum.map(fn server ->
+      {:ok, response} =
+        HTTPoison.post(
+          server.url <> "/api/blocks/propose",
+          Poison.encode!(%{propose: propose}),
+          [
+            {"Content-Type", "application/json"}
+          ]
+        )
 
-          Kniffel.Cache.set(
-            {:propose_response, block_index: propose.block_index},
-            [propose_response] ++ results
-          )
+      with %{"propose_response" => propose_response} <- Poison.decode!(response.body),
+           %ServerResponse{} = propose_response <- ServerResponse.change(propose_response),
+           {:ok, propose_response} <- ServerResponse.verify(propose, propose_response),
+           true <- propose_response.server_id == server.id do
+        results = Kniffel.Cache.get({:propose_response, block_index: propose.block_index}) || []
 
-          propose_response
-        else
-          false ->
-            {:error, :server_id_does_not_match}
+        Kniffel.Cache.set(
+          {:propose_response, block_index: propose.block_index},
+          [propose_response] ++ results
+        )
 
-          {:error, message} ->
-            {:error, message}
-        end
-      end)
-    else
-      {:error, :no_transactions_for_block}
-    end
+        propose_response
+      else
+        false ->
+          {:error, :server_id_does_not_match}
+
+        {:error, message} ->
+          {:error, message}
+      end
+    end)
+
+    {:ok, propose}
   end
 
   def validate_block_proposal(%Propose{} = propose) do
     with {:ok, propose} <- Propose.verify(propose),
          transactions <- get_proposal_transactions(propose),
+         {:transactions, true} <- {:transactions, Enum.empty?(transactions)},
          block_data_ids <- get_block_data_ids(),
          true <- Enum.map(transactions, & &1.id) |> Enum.sort() == block_data_ids |> Enum.sort() do
       propose_response =
@@ -135,6 +137,12 @@ defmodule Kniffel.Blockchain do
 
       propose_response
     else
+      {:transactions, false} ->
+        Map.new()
+        |> Map.put(:error, :no_transactions_in_block)
+        |> Map.put(:server, Server.get_this_server())
+        |> ServerResponse.change()
+
       {:error, message} ->
         Map.new()
         |> Map.put(:error, message)
@@ -171,12 +179,12 @@ defmodule Kniffel.Blockchain do
     |> Enum.sort(&(&1.timestamp < &2.timestamp))
   end
 
-  def create_new_block() do
+  def commit_new_block() do
     last_block = get_last_block()
 
-    propose = Kniffel.Cache.get({:propose, block_index: last_block.index + 1})
+    propose = Kniffel.Cache.take({:propose, block_index: last_block.index + 1})
 
-    propose_response = Kniffel.Cache.get({:propose_response, block_index: last_block.index + 1})
+    propose_response = Kniffel.Cache.take({:propose_response, block_index: last_block.index + 1})
 
     if !is_nil(propose) do
       true = propose.pre_hash == last_block.hash
@@ -220,11 +228,16 @@ defmodule Kniffel.Blockchain do
         |> Block.changeset_create(block_params)
         |> Repo.insert()
 
+      Kniffel.Cache.delete({:block, block_index: block.index})
+      Kniffel.Cache.delete({:block_response, block_index: block.index})
+
+      Kniffel.Cache.set({:block, block_index: block.index}, block)
+
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
         {:ok, response} =
           HTTPoison.post(
-            server.url <> "/api/blocks",
+            server.url <> "/api/blocks/commit",
             Poison.encode!(%{block: Block.json_encode(block)}),
             [
               {"Content-Type", "application/json"}
@@ -238,7 +251,7 @@ defmodule Kniffel.Blockchain do
           results = Kniffel.Cache.get({:propose_response, block_index: propose.block_index}) || []
 
           Kniffel.Cache.set(
-            {:block_response, block_index: block.block_index},
+            {:block_response, block_index: block.index},
             [block_response] ++ results
           )
 
@@ -260,7 +273,7 @@ defmodule Kniffel.Blockchain do
 
   def insert_block(%{"server_id" => server_id, "data" => data, "index" => index} = block_params) do
     %{propose: propose, propose_response: _} =
-      Kniffel.Cache.get(%{block_index: index, server_id: server_id})
+      Kniffel.Cache.take(%{block_index: index, server_id: server_id})
 
     with %{"propose_response" => propose_responses, "transactions" => transaction_data} <-
            Poison.decode!(data),
@@ -336,6 +349,138 @@ defmodule Kniffel.Blockchain do
         |> Map.put(:error, :unknown_server)
         |> Map.put(:server, Server.get_this_server())
         |> ServerResponse.change()
+    end
+  end
+
+  def finalize_block() do
+    last_block = get_last_block()
+    block = Kniffel.Cache.take({:block, block_index: last_block.index})
+    block_response = Kniffel.Cache.take({:block_response, block_index: last_block.index})
+
+    propose_response_count =
+      block_response
+      |> Enum.filter(&(&1.error == :none)) ||
+        []
+        |> length
+
+    true = propose_response_count >= calculate_min_propose_response_count()
+
+    Server.get_authorized_servers(false)
+    |> Enum.map(fn server ->
+      {:ok, response} =
+        HTTPoison.post(
+          server.url <> "/api/blocks",
+          Poison.encode!(%{block: Block.json_encode(block)}),
+          [
+            {"Content-Type", "application/json"}
+          ]
+        )
+    end)
+  end
+
+  def handle_height_change(
+        %{"server_id" => server_id, "data" => data, "index" => index} = block_params
+      ) do
+    with data <- Poison.decode!(data),
+         %Server{authority: true} = server <- Server.get_server(server_id) do
+      case get_block(index) do
+        %Block{} = block ->
+          true = block_params["hash"] == block.hash
+          true = block_params["signature"] == block.signature
+          {:ok, block}
+
+        nil ->
+          transactions =
+            Enum.map(data["transactions"], fn transaction_params ->
+              transaction = get_transaction(transaction_params["id"])
+
+              case transaction do
+                %Transaction{} = transaction ->
+                  transaction
+
+                nil ->
+                  get_transaction_from_server(transaction.id, server.url)
+              end
+            end)
+
+          block_params =
+            block_params
+            |> Map.drop(["transactions"])
+            |> Map.put("server", server)
+            |> Map.put("transactions", transactions)
+
+          %Block{}
+          |> Repo.preload([:server, :transactions])
+          |> Block.changeset_p2p(block_params)
+          |> Repo.insert()
+      end
+    else
+      nil ->
+        {:unknown_server, server_id}
+    end
+  end
+
+  def cancel_block_propose(:no_transactions) do
+    round_number = Kniffel.Cache.get(:round_number)
+    this_server = Server.get_this_server()
+
+    data = %{
+      server_id: this_server.id,
+      round_number: round_number,
+      reason: :no_transactions
+    }
+
+    with {:ok, private_key} <- Crypto.private_key(),
+         {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key) do
+      signature =
+        data
+        |> Poison.encode!()
+        |> Crypto.sign(private_key_pem)
+
+      Server.get_authorized_servers(false)
+      |> Enum.map(fn server ->
+        {:ok, response} =
+          HTTPoison.post(
+            server.url <> "/api/blocks/cancel_propose",
+            Poison.encode!(%{cancel_block_propose: Map.put(data, :signature, signature)}),
+            [
+              {"Content-Type", "application/json"}
+            ]
+          )
+
+        with %{"cancel_block_propose_response" => cancel_block_propose_response} <-
+               Poison.decode!(response.body) do
+          :ok = cancel_block_propose_response
+        end
+      end)
+    end
+  end
+
+  def handle_cancel_block_propose(%{
+        "server_id" => server_id,
+        "round_number" => round_number,
+        "reason" => reason
+      }) do
+    with %Server{authority: true} = server <- Server.get_server(server_id) do
+      case reason do
+        :no_transaction ->
+          :ok
+
+        # cancel timers and wait for next round
+        # validate there a no transactions with timestamp before propose_start
+
+        :timeout ->
+          get_round_times(round_number)
+
+        # compare DateTime.now() to round_times
+
+        :not_valid ->
+          :ok
+          # cancel timers and wait for next round
+      end
+    else
+      nil ->
+        {:unknown_server, server_id}
     end
   end
 

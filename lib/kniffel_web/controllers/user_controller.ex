@@ -44,12 +44,12 @@ defmodule KniffelWeb.UserController do
     case User.create_user(user) do
       {:ok, user} ->
         conn
-        |> put_flash(:info, "Created! Please take note of your user-id: #{user.id}.")
+        |> put_flash(:info, "Created!")
         |> redirect(to: public_session_path(conn, :new))
 
       {:error, changeset} ->
         conn
-        |> put_flash(:error, "Fehler beim Erstellen")
+        |> put_flash(:error, "Fehler beim erstellen!")
         |> render("new.html",
           changeset: changeset,
           action: public_user_path(conn, :create)

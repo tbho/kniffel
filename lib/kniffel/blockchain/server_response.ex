@@ -104,9 +104,17 @@ defmodule Kniffel.Blockchain.Block.ServerResponse do
     end
   end
 
-  def verify(%Propose{} = propose, %ServerResponse{error: :none} = server_response) do
+  def verify(%Propose{} = propose, %ServerResponse{error: :none} = server_response),
+    do: verify_signature(server_response, Propose.hash(propose))
+
+  def verify(%Block{} = block, %ServerResponse{error: :none} = server_response),
+    do: verify_signature(server_response, block.hash)
+
+  def verify(_propose_or_block, %ServerResponse{error: error}), do: {:error, error}
+
+  defp verify_signature(server_response, hash) do
     with %Server{} = server <- Server.get_server(server_response.server_id),
-         true <- server_response.hash == Propose.hash(propose),
+         true <- server_response.hash == hash,
          data_enc <-
            Poison.encode!(%{hash: server_response.hash, error: server_response.error}),
          :ok <- Crypto.verify(data_enc, server.public_key, server_response.signature) do
@@ -122,8 +130,6 @@ defmodule Kniffel.Blockchain.Block.ServerResponse do
         {:error, :signature_invalid}
     end
   end
-
-  def verify(_propose, %ServerResponse{error: error}), do: {:error, error}
 
   def json(%ServerResponse{} = server_response) do
     %{

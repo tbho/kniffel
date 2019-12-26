@@ -1,25 +1,32 @@
-div.level
-  h2.title.is-2 = gettext("Create new user")
+div.columns
+  div.column(style="padding=0")
+  div.column
+    div.level
+      h2.title.is-2 = gettext("Register new user")
 
-div.box
-  = form_for @changeset, @action, fn user_form ->
-    div.columns
-      div.column
-        h5.title.is-5 = gettext("Private Key (key will be generated if leave blank)")
-        = textarea(user_form, :private_key, class: "input", type: "text")
+    div.box
+      div.columns
+        = form_for @changeset, @action, fn user_form ->
+          / div.column.is-full
+          /   h5.title.is-5 = gettext("Private Key (key will be generated if leave blank)")
+          /   = textarea(user_form, :private_key, class: "input", type: "text")
+          = hidden_input(user_form, :private_key, value: "")
 
-    div.columns
-      div.column
-        h5.title.is-5 = gettext("Password")
-        = password_input(user_form, :password, class: "input", type: "password")
+          div.column.is-full
+            h5.title.is-5 = gettext("Username")
+            = text_input(user_form, :user_name, class: "input", type: "text")
 
-    div.columns
-      div.column
-        h5.title.is-5 = gettext("Repeat password")
-        = password_input(user_form, :password_confirmation, class: "input", type: "password")
+          div.column.is-full
+            h5.title.is-5 = gettext("Password")
+            = password_input(user_form, :password, class: "input", type: "password")
 
-    div.level.is-mobile
-      div.level-left
-        = submit gettext("Create"), class: "button is-primary level-item"
-      div.level-right
-        a.button.is-info.level-item(href="#{public_session_path(@conn, :new)}") Login
+          div.column.is-full
+            h5.title.is-5 = gettext("Repeat password")
+            = password_input(user_form, :password_confirmation, class: "input", type: "password")
+
+          div.column.is-full
+            = submit gettext("Register"), class: "button is-primary"
+          div.column.is-full
+            p.has-text-info.has-text-weight-semibold.label Already have an account? Login instead!
+            a.button.is-info.is-outlined(href="#{public_session_path(@conn, :new)}") Login
+  div.column(style="padding=0")

@@ -9,7 +9,7 @@ defmodule KniffelWeb.SessionController do
     })
   end
 
-  def create(conn, %{"id" => id, "password" => password} = session) do
+  def create(conn, %{"user_name" => user_name, "password" => password} = session) do
     format = get_format(conn)
 
     params = %{
@@ -18,7 +18,7 @@ defmodule KniffelWeb.SessionController do
       refresh_token: session["remember_me"] == "true"
     }
 
-    result = Session.create_session(id, password, params)
+    result = Session.create_session(user_name, password, params)
 
     case {format, result} do
       {"html", {:ok, session}} ->

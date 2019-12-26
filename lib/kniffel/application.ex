@@ -13,9 +13,9 @@ defmodule Kniffel.Application do
       # Start the Ecto repository
       Kniffel.Repo,
       # Start the endpoint when the application starts
-      KniffelWeb.Endpoint,
+      KniffelWeb.Endpoint
       # Starts the sheduling service for proposal and creation of new blocks
-      Kniffel.Sheduler
+      # Kniffel.Sheduler
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

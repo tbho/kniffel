@@ -60,6 +60,13 @@ defmodule Kniffel.Server do
     |> Repo.all()
   end
 
+  def get_not_authorized_servers(include_this_server \\ true) do
+    Server
+    |> where([s], s.authority == false)
+    |> include_this_server_query(include_this_server)
+    |> Repo.all()
+  end
+
   defp authorized_server_query() do
     Server
     |> where([s], s.authority == true)

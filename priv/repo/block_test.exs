@@ -11,9 +11,7 @@
 # and so on) as they will fail if something goes wrong.
 
 defmodule Kniffel.Seed do
-  alias Kniffel.{Game, User, Server, Blockchain, Repo}
-  alias Kniffel.Blockchain.Crypto
-  alias Kniffel.Blockchain.Block
+  alias Kniffel.{Game, User, Blockchain, Repo}
   import Ecto.Query, warn: false
 
   def create_users(count \\ 1) do
@@ -21,7 +19,8 @@ defmodule Kniffel.Seed do
       user_params = %{
         "password" => "Abc123de!",
         "password_confirmation" => "Abc123de!",
-        "private_key" => ""
+        "private_key" => "",
+        "username" => "test"
       }
 
       {:ok, user} = User.create_user(user_params)
@@ -152,7 +151,7 @@ defmodule Kniffel.Seed do
   end
 end
 
-Kniffel.Seed.create_transactions(10)
+Kniffel.Seed.create_transactions(2)
 
 # if System.get_env("ENV_NAME") != "production" do
 #   Code.eval_file(

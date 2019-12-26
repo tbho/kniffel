@@ -13,13 +13,6 @@ defmodule KniffelWeb.BlockController do
     render(conn, "show.json", block: block)
   end
 
-  def create(conn, %{"block" => block_params}) do
-    block_response = Blockchain.insert_block(block_params)
-
-    json(conn, %{block_response: ServerResponse.json(block_response)})
-    # render(conn, "show.json", block: block)
-  end
-
   def propose(conn, %{"propose" => propose}) do
     propose_response =
       propose
@@ -27,5 +20,15 @@ defmodule KniffelWeb.BlockController do
       |> Blockchain.validate_block_proposal()
 
     json(conn, %{propose_response: ServerResponse.json(propose_response)})
+  end
+
+  def commit(conn, %{"block" => block_params}) do
+    block_response = Blockchain.insert_block(block_params)
+    json(conn, %{block_response: ServerResponse.json(block_response)})
+  end
+
+  def finalize(conn, %{"block" => block_params}) do
+    {:ok, block} = Blockchain.insert_block_from_network(block_params)
+    render(conn, "show.json", block: block)
   end
 end
