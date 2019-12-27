@@ -6,7 +6,16 @@ defmodule Kniffel.Blockchain do
   import Ecto.Query, warn: false
 
   alias Kniffel.Repo
-  alias Kniffel.Blockchain.{Crypto, Block, Block.Propose, Block.ServerResponse, Transaction, Sheduler}
+
+  alias Kniffel.Blockchain.{
+    Crypto,
+    Block,
+    Block.Propose,
+    Block.ServerResponse,
+    Transaction,
+    Sheduler
+  }
+
   alias Kniffel.{Game, Game.Score, User, Server}
 
   @block_transaction_limit 10
@@ -71,51 +80,53 @@ defmodule Kniffel.Blockchain do
   def propose_new_block() do
     block_data = get_block_data()
 
-    propose =
-      Map.new()
-      |> Map.put(:transactions, block_data)
-      |> Map.put(:block, get_last_block())
-      |> Map.put(:server, Server.get_this_server())
-      |> Propose.change()
+    if length(block_data) > 0 do
+      propose =
+        Map.new()
+        |> Map.put(:transactions, block_data)
+        |> Map.put(:block, get_last_block())
+        |> Map.put(:server, Server.get_this_server())
+        |> Propose.change()
 
-    Kniffel.Cache.delete({:propose, block_index: propose.block_index})
-    Kniffel.Cache.delete({:propose_response, block_index: propose.block_index})
+      Kniffel.Cache.delete({:propose, block_index: propose.block_index})
+      Kniffel.Cache.delete({:propose_response, block_index: propose.block_index})
 
-    Kniffel.Cache.set({:propose, block_index: propose.block_index}, propose)
+      Kniffel.Cache.set({:propose, block_index: propose.block_index}, propose)
 
-    Server.get_authorized_servers(false)
-    |> Enum.map(fn server ->
-      {:ok, response} =
-        HTTPoison.post(
-          server.url <> "/api/blocks/propose",
-          Poison.encode!(%{propose: propose}),
-          [
-            {"Content-Type", "application/json"}
-          ]
-        )
+      Server.get_authorized_servers(false)
+      |> Enum.map(fn server ->
+        {:ok, response} =
+          HTTPoison.post(
+            server.url <> "/api/blocks/propose",
+            Poison.encode!(%{propose: propose}),
+            [
+              {"Content-Type", "application/json"}
+            ]
+          )
 
-      with %{"propose_response" => propose_response} <- Poison.decode!(response.body),
-           %ServerResponse{} = propose_response <- ServerResponse.change(propose_response),
-           {:ok, propose_response} <- ServerResponse.verify(propose, propose_response),
-           true <- propose_response.server_id == server.id do
-        results = Kniffel.Cache.get({:propose_response, block_index: propose.block_index}) || []
+        with %{"propose_response" => propose_response} <- Poison.decode!(response.body),
+             %ServerResponse{} = propose_response <- ServerResponse.change(propose_response),
+             %ServerResponse{} = propose_response <-
+               ServerResponse.verify(propose, propose_response),
+             true <- propose_response.server_id == server.id do
+          results = Kniffel.Cache.get({:propose_response, block_index: propose.block_index}) || []
 
-        Kniffel.Cache.set(
-          {:propose_response, block_index: propose.block_index},
-          [propose_response] ++ results
-        )
+          Kniffel.Cache.set(
+            {:propose_response, block_index: propose.block_index},
+            [propose_response] ++ results
+          )
 
-        propose_response
-      else
-        false ->
-          {:error, :server_id_does_not_match}
+          propose_response
+        else
+          false ->
+            {:error, :server_id_does_not_match}
+        end
+      end)
 
-        {:error, message} ->
-          {:error, message}
-      end
-    end)
-
-    {:ok, propose}
+      {:ok, propose}
+    else
+      {:error, :no_transactions}
+    end
   end
 
   def validate_block_proposal(%Propose{} = propose) do
@@ -367,7 +378,7 @@ defmodule Kniffel.Blockchain do
 
     Server.get_authorized_servers(false)
     |> Enum.map(fn server ->
-      {:ok, response} =
+      {:ok, _response} =
         HTTPoison.post(
           server.url <> "/api/blocks",
           Poison.encode!(%{block: Block.json_encode(block)}),
@@ -420,73 +431,20 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  def cancel_block_propose(:no_transactions) do
-    round_number = Kniffel.Cache.get(:round_number)
-    this_server = Server.get_this_server()
-
-    data = %{
-      server_id: this_server.id,
-      round_number: round_number,
-      reason: :no_transactions
-    }
-
-    with {:ok, private_key} <- Crypto.private_key(),
-         {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key) do
-      signature =
-        data
-        |> Poison.encode!()
-        |> Crypto.sign(private_key_pem)
-
-      Server.get_authorized_servers(false)
-      |> Enum.map(fn server ->
-        {:ok, response} =
-          HTTPoison.post(
-            server.url <> "/api/blocks/cancel_propose",
-            Poison.encode!(%{cancel_block_propose: Map.put(data, :signature, signature)}),
-            [
-              {"Content-Type", "application/json"}
-            ]
-          )
-
-        with %{"cancel_block_propose_response" => cancel_block_propose_response} <-
-               Poison.decode!(response.body) do
-          :ok = cancel_block_propose_response
-        end
-      end)
+  def is_leader?(server) do
+    case Kniffel.Cache.get(:server_queue) do
+      nil -> calculate_ages_of_servers()
+      hit -> hit
     end
+    |> Enum.sort_by(&elem(&1, 1))
+    |> IO.inspect()
+    |> List.first()
   end
-
-  # def handle_cancel_block_propose(%{
-  #       "server_id" => server_id,
-  #       "round_number" => round_number,
-  #       "reason" => reason
-  #     }) do
-  #   with %Server{authority: true} = server <- Server.get_server(server_id) do
-  #     case reason do
-  #       :no_transaction ->
-  #         :ok
-
-  #       # cancel timers and wait for next round
-  #       # validate there a no transactions with timestamp before propose_start
-
-  #       :timeout ->
-  #         get_round_times(round_number)
-
-  #       # compare DateTime.now() to round_times
-
-  #       :not_valid ->
-  #         :ok
-  #         # cancel timers and wait for next round
-  #     end
-  #   else
-  #     nil ->
-  #       {:unknown_server, server_id}
-  #   end
-  # end
 
   def calculate_ages_of_servers() do
     servers = Server.get_authorized_servers()
-    calculate_ages_of_servers(0, @age_calculation_select_limit, servers)
+    server_queue = calculate_ages_of_servers(0, @age_calculation_select_limit, servers)
+    Kniffel.Cache.set(:server_queue, server_queue)
   end
 
   def calculate_ages_of_servers(offset, limit, servers, result \\ %{}) do
@@ -502,10 +460,23 @@ defmodule Kniffel.Blockchain do
         {Map.put_new(result, block.server_id, offset), offset + 1}
       end)
 
-    if Enum.all?(servers, fn server -> Map.get(result, server.id) != nil end) do
-      result
-    else
-      calculate_ages_of_servers(offset, limit, servers, result)
+    cond do
+      Enum.all?(servers, fn server -> Map.get(result, server.id) != nil end) ->
+        result
+
+      length(blocks) < limit ->
+        Enum.reduce(servers, result, fn server, result ->
+          case Map.get(result, server.id) do
+            nil ->
+              Map.put_new(result, server.id, 0)
+
+            other ->
+              result
+          end
+        end)
+
+      true ->
+        calculate_ages_of_servers(offset, limit, servers, result)
     end
   end
 
@@ -525,8 +496,6 @@ defmodule Kniffel.Blockchain do
         )
       end
     end)
-
-    ["dab28baffc1e390792f1506ac9cc733fba8fed887e187a1bf61bba1193de0f86"]
   end
 
   def calculate_min_propose_response_count() do

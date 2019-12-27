@@ -50,11 +50,11 @@ defmodule Kniffel.MixProject do
       {:poison, "~> 3.1"},
       {:rsa_ex, "~> 0.4"},
       {:ex_crypto, "~> 0.10.0"},
-      {:quantum, "~> 2.3"},
-      {:timex, "~> 3.0"},
+      # {:quantum, "~> 2.3"},
       {:httpoison, "~> 1.6"},
       {:distillery, "~> 2.0"},
-      {:nebulex, "~> 1.1"}
+      {:nebulex, "~> 1.1"},
+      {:timex, "~> 3.0"}
     ]
   end
 

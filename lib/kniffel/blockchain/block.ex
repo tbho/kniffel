@@ -16,7 +16,7 @@ defmodule Kniffel.Blockchain.Block do
   schema "block" do
     field :pre_hash, :string
     field :proof, :integer, default: 1
-    field :timestamp, :utc_datetime, default: DateTime.truncate(DateTime.utc_now(), :second)
+    field :timestamp, :utc_datetime, default: Timex.now()
     field :hash, :string
     field :signature, :string
     field :data, :string
@@ -87,7 +87,7 @@ defmodule Kniffel.Blockchain.Block do
     changeset =
       changeset
       |> put_change(:proof, proof + 1)
-      |> put_change(:timestamp, DateTime.truncate(DateTime.utc_now(), :second))
+      |> put_change(:timestamp, Timex.now())
 
     changeset
     |> take(@hash_fields)

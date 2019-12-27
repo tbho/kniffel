@@ -97,7 +97,7 @@ defmodule Kniffel.Server do
         {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
         server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
 
-        server = Server.get_server(server_id)
+        server = get_server(server_id)
         Kniffel.Cache.set(:server, server)
         server
     end
@@ -164,7 +164,7 @@ defmodule Kniffel.Server do
         end)
         |> Map.new()
 
-      timestamp = DateTime.to_string(DateTime.truncate(DateTime.utc_now(), :second))
+      timestamp = Timex.now()
 
       signature =
         Poison.encode!(%{"dices" => dices, "timestamp" => timestamp})
