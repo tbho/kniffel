@@ -2,6 +2,7 @@ defmodule KniffelWeb.ShedulerController do
   use KniffelWeb, :controller
 
   alias Kniffel.User
+  alias Kniffel.Sheduler
 
   def next_round(conn, attrs) do
     case Kniffel.Cache.get(:round_specification) do
@@ -9,7 +10,7 @@ defmodule KniffelWeb.ShedulerController do
         json(conn, %{error: :not_set})
 
       hit ->
-        json(conn, %{round_response: Sheduler.get_round_times()})
+        json(conn, %{round_response: hit})
     end
   end
 

@@ -37,18 +37,16 @@ defmodule Kniffel.Sheduler do
       # TODO: after n rounds calculate new round times
       server = Kniffel.Server.get_this_server()
 
-      cond do
-        Kniffel.Blockchain.is_leader?(server) ->
+      case Kniffel.Blockchain.is_leader?(server) do
+        true ->
           Process.send(self(), :propose_block, [])
           schedule_block_commit(Kernel.trunc(round_length / 3))
           schedule_block_finalization(Kernel.trunc(round_length / 3) * 2)
 
-        Kniffel.Blockchain.is_canceler?(server) ->
+        false ->
+          posittion = Kniffel.Blockchain.get_position_in_server_queue(server)
           schedule_cancel_block_propose(Kernel.trunc(round_length / 3))
           schedule_cancel_block_commit(Kernel.trunc(round_length / 3) * 2)
-
-        true ->
-          true
       end
     end
 

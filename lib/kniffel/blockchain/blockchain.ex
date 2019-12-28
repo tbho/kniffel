@@ -432,19 +432,40 @@ defmodule Kniffel.Blockchain do
   end
 
   def is_leader?(server) do
-    case Kniffel.Cache.get(:server_queue) do
-      nil -> calculate_ages_of_servers()
-      hit -> hit
-    end
-    |> Enum.sort_by(&elem(&1, 1))
-    |> IO.inspect()
-    |> List.first()
+    1 == get_position_in_server_queue(server)
   end
 
-  def calculate_ages_of_servers() do
-    servers = Server.get_authorized_servers()
-    server_queue = calculate_ages_of_servers(0, @age_calculation_select_limit, servers)
-    Kniffel.Cache.set(:server_queue, server_queue)
+  def get_position_in_server_queue(server) do
+    with server_queue when not is_nil(server_queue) <- calculate_ages_of_servers,
+         server_queue <- Enum.sort_by(server_queue, &elem(&1, 1), &>=/2) do
+      {position, _changed} =
+        Enum.reduce(server_queue, {1, false}, fn
+          _position_result, {position, true} ->
+            {position, true}
+
+          position_result, {position, false} ->
+            if server.id == elem(position_result, 0) do
+              {position, true}
+            else
+              {position + 1, false}
+            end
+        end)
+
+      position
+    end
+  end
+
+  def calculate_ages_of_servers(refresh_list \\ false) do
+    cache_result = Kniffel.Cache.get(:server_ages)
+
+    if refresh_list || is_nil(cache_result) do
+      servers = Server.get_authorized_servers()
+      server_ages = calculate_ages_of_servers(0, @age_calculation_select_limit, servers)
+      Kniffel.Cache.set(:server_ages, server_ages)
+      server_ages
+    else
+      cache_result
+    end
   end
 
   def calculate_ages_of_servers(offset, limit, servers, result \\ %{}) do
