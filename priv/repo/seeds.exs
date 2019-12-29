@@ -49,8 +49,6 @@ case Server.get_server_by_url(url) do
       |> Repo.insert()
 end
 
-Blockchain.compare_block_height_with_network
-
 case Blockchain.get_block(0) do
   %Block{} = block ->
     block
