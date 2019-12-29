@@ -16,7 +16,7 @@ defmodule Kniffel.Blockchain.Transaction do
   schema "transaction" do
     field :signature, :string
     field :data, :string
-    field :timestamp, :utc_datetime, default: DateTime.truncate(DateTime.utc_now(), :second)
+    field :timestamp, :string, default: Timex.now() |> Timex.format!("{ISO:Extended}")
 
     has_many(:scores, Score)
     has_many(:games, Game)
@@ -34,7 +34,7 @@ defmodule Kniffel.Blockchain.Transaction do
   def changeset_create(transaction, %{"password" => password} = attrs) do
     transaction
     |> cast(attrs, [:data])
-    |> cast(%{timestamp: DateTime.truncate(DateTime.utc_now(), :second)}, [:timestamp])
+    |> cast(%{timestamp: Timex.now |> Timex.format!("{ISO:Extended}")}, :timestamp)
     |> put_assoc(:user, attrs["user"] || transaction.user)
     |> put_assoc(:block, attrs["block"] || transaction.block)
     |> put_assoc(:scores, attrs["scores"] || transaction.scores)

@@ -6,7 +6,7 @@ defmodule Kniffel.Repo.Migrations.AddBlock do
       add :index, :id, primary_key: true
       add :pre_hash, :string
       add :proof, :integer, default: 1
-      add :timestamp, :utc_datetime, default: fragment("now()")
+      add :timestamp, :string
       add :server_id, references(:server, type: :string)
       add :hash, :string
       add :signature, :string, size: 10000

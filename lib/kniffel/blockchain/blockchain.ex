@@ -386,7 +386,7 @@ defmodule Kniffel.Blockchain do
                Poison.encode!(%{
                  block_height: %{
                    height: block.index,
-                   timestamp: Timex.format!(block.timestamp, "{ISO:Extended}"),
+                   timestamp: block.timestamp,
                    server_id: this_server.id,
                    hash: block.hash
                  }
