@@ -1,7 +1,7 @@
 defmodule KniffelWeb.BlockController do
   use KniffelWeb, :controller
 
-  alias Kniffel.{Blockchain, Blockchain.Block.Propose, Blockchain.Block.ServerResponse}
+  alias Kniffel.{Blockchain, Blockchain.Block.Propose, Blockchain.Block.ServerResponse, Server}
 
   def index(conn, _params) do
     blocks = Blockchain.get_blocks()
