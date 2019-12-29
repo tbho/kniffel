@@ -205,7 +205,8 @@ defmodule Kniffel.Sheduler do
     %{
       round_length: @default_round_length,
       round_begin: time_now,
-      round_number: 1
+      round_number: 1,
+      default: true
     }
   end
 
@@ -222,7 +223,8 @@ defmodule Kniffel.Sheduler do
           %{
             round_length: round_response["round_length"],
             round_begin: round_begin,
-            round_number: round_response["round_number"]
+            round_number: round_response["round_number"],
+            default: round_response["default"]
           }
         else
           %{"error" => _error} ->
@@ -255,7 +257,8 @@ defmodule Kniffel.Sheduler do
   def get_next_round_specification() do
     with %{
            round_length: round_length,
-           round_number: round_number
+           round_number: round_number,
+           default: default
          } = round_specification <- Kniffel.Cache.get(:round_specification) do
       new_round_begin = get_round_time(round_specification, :next_round)
 
@@ -263,6 +266,7 @@ defmodule Kniffel.Sheduler do
         round_length: round_length,
         round_begin: new_round_begin,
         round_number: round_number + 1
+        default: default
       }
     else
       nil ->
