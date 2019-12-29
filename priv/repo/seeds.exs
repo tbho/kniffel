@@ -40,11 +40,16 @@ case Server.get_server_by_url(url) do
     server
 
   nil ->
-    Server.create_server(%{"url" => url})
+    {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
+    {:ok, server} = Poison.decode(response.body)
+
+    {:ok, server} =
+      %Server{}
+      |> Server.cast_changeset(server["server"])
+      |> Repo.insert()
 end
 
-from(s in Server, where: s.url == "https://kniffel.app", update: [set: [authority: true]])
-|> Repo.update_all([])
+Blockchain.compare_block_height_with_network
 
 case Blockchain.get_block(0) do
   %Block{} = block ->

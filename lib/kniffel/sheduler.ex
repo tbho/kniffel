@@ -25,7 +25,7 @@ defmodule Kniffel.Sheduler do
 
     # calculate diff (in milliseconds) till start of new round
     diff_milliseconds =
-      get_round_specification()
+      get_next_round_specification()
       |> get_round_time(:round_begin)
       |> calculate_diff_to_now
       |> IO.inspect

@@ -35,11 +35,12 @@ defmodule KniffelWeb.BlockController do
   def height(conn, _attrs) do
     server = Server.get_this_server()
     block = Blockchain.get_last_block()
+    {:ok, timestamp} = Timex.parse(block.timestamp, "{ISO:Extended}")
 
     json(conn, %{
       height_response: %{
         height: block.index,
-        timestamp: Timex.format!(block.timestamp, "{ISO:Extended}"),
+        timestamp: timestamp,
         server_id: server.id,
         hash: block.hash
       }
