@@ -199,19 +199,22 @@ defmodule Kniffel.Server do
   end
 
   def add_this_server_to_master_server() do
-    master_server = Server.get_authorized_server(false)
     this_server = Server.get_this_server
-    {:ok, response} =
-      HTTPoison.post(
-        master_server.url <> "/api/servers",
-        Poison.encode!(%{server: %{url: this_server.url}}),
-        [
-          {"Content-Type", "application/json"}
-        ]
-      )
+    if !this_server.authorized do
+      master_server = Server.get_authorized_server(false)
 
-    with %{"server" => server_response} <- Poison.decode!(response.body) do
-      Server.update_server(this_server, server_response)
+      {:ok, response} =
+        HTTPoison.post(
+          master_server.url <> "/api/servers",
+          Poison.encode!(%{server: %{url: this_server.url}}),
+          [
+            {"Content-Type", "application/json"}
+          ]
+        )
+
+      with %{"server" => server_response} <- Poison.decode!(response.body) do
+        Server.update_server(this_server, server_response)
+      end
     end
   end
 end
