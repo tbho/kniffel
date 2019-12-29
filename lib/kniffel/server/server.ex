@@ -200,7 +200,7 @@ defmodule Kniffel.Server do
 
   def add_this_server_to_master_server() do
     this_server = Server.get_this_server
-    if !this_server.authorized do
+    if !this_server.authority do
       master_server = Server.get_authorized_server(false)
 
       {:ok, response} =
