@@ -16,13 +16,17 @@ defmodule Kniffel.Sheduler do
   def init(state) do
     # TODO: compare blocks with other servers (get server adress without adding server to network)
     # TODO: add server to network
+
+    # get the round_specification for next round from master_nodes
     request_round_specification_from_network
 
+    # calculate diff (in milliseconds) till start of new round
     diff_milliseconds =
       get_round_specification()
       |> get_round_time(:round_begin)
       |> calculate_diff_to_now
 
+    # shedule new round
     Process.send_after(self(), :next_round, diff_milliseconds)
 
     {:ok, state}
@@ -31,13 +35,17 @@ defmodule Kniffel.Sheduler do
   def handle_info(:next_round, state) do
     Logger.info("--- Start a new round --------------------------------------------------")
     round_specification = get_round_specification()
-    # do nothing if no other server in network
+
+    # get other master nodes
     servers = Server.get_authorized_servers(false)
 
+    # do nothing if no other server in network
     if length(servers) > 0 do
       # TODO: after n rounds calculate new round times
       server = Kniffel.Server.get_this_server()
 
+      # if this server is oldest he is choosen for block creation
+      # if not he is choosen to abort if lead server runs in a timeout
       case Kniffel.Blockchain.is_leader?(server) do
         true ->
           round_specification
@@ -52,6 +60,7 @@ defmodule Kniffel.Sheduler do
           |> schedule(:cancel_block_commit)
       end
     else
+      # if no other server in network save new round specification
       Kniffel.Cache.set(:round_specification, get_next_round_specification)
     end
 
@@ -169,24 +178,6 @@ defmodule Kniffel.Sheduler do
     Timex.diff(time, Timex.now(), unit)
   end
 
-  def get_next_round_specification() do
-    with %{
-           round_length: round_length,
-           round_number: round_number
-         } = round_specification <- Kniffel.Cache.get(:round_specification) do
-      new_round_begin = get_round_time(round_specification, :next_round)
-
-      %{
-        round_length: round_length,
-        round_begin: new_round_begin,
-        round_number: round_number + 1
-      }
-    else
-      nil ->
-        {:error, :no_round_specification_in_cache}
-    end
-  end
-
   defp get_round_specification() do
     round_specification =
       case Kniffel.Cache.get(:round_specification) do
@@ -209,7 +200,7 @@ defmodule Kniffel.Sheduler do
     time_now =
       Timex.now()
       |> Timex.add(Timex.Duration.from_seconds(@round_offset))
-      |> Timex.format!("{ISO:Extended}")
+      # |> Timex.format!("{ISO:Extended}")
 
     %{
       round_length: @default_round_length,
@@ -239,20 +230,45 @@ defmodule Kniffel.Sheduler do
         end
       end)
 
-    {round_specification, _count} =
-      round_specification_responses
-      |> Enum.uniq()
-      |> Enum.map(fn spec -> {spec, Enum.count(round_specification_responses, &(spec == &1))} end)
-      |> Enum.sort_by(&elem(&1, 1), &>=/2)
-      |> List.first()
-
-    Kniffel.Cache.set(:round_specification, round_specification)
-    round_specification
+    # if no server is in network empty list is returned
+    # otherwise answers will be grouped and answer with highest count is choosen
+    with false <- Enum.empty?(round_specification_responses),
+         uniq_specs <- Enum.uniq(round_specification_responses),
+         grouped_specs <-
+           Enum.map(uniq_specs, fn uniq_spec ->
+             {uniq_spec, Enum.count(round_specification_responses, &(uniq_spec == &1))}
+           end),
+         sort_specs <- Enum.sort_by(grouped_specs, &elem(&1, 1), &>=/2) do
+      {round_specification, _count} = List.first(sort_specs)
+      Kniffel.Cache.set(:round_specification, round_specification)
+      round_specification
+    else
+      true ->
+        nil
+    end
   end
 
   # ----------------------------------------------------------------------------
-  # ---  Helper - Methods ---
+  # ---  Network - Control - Methods ---
   # ----------------------------------------------------------------------------
+
+  def get_next_round_specification() do
+    with %{
+           round_length: round_length,
+           round_number: round_number
+         } = round_specification <- Kniffel.Cache.get(:round_specification) do
+      new_round_begin = get_round_time(round_specification, :next_round)
+
+      %{
+        round_length: round_length,
+        round_begin: new_round_begin,
+        round_number: round_number + 1
+      }
+    else
+      nil ->
+        {:error, :no_round_specification_in_cache}
+    end
+  end
 
   def cancel_block_propose(reason) do
     %{round_number: round_number} = get_round_specification()
