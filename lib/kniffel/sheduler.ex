@@ -16,7 +16,7 @@ defmodule Kniffel.Sheduler do
   def init(state) do
     # TODO: compare blocks with other servers (get server adress without adding server to network)
     # TODO: add server to network
-    add_this_server_to_master_server()
+    Server.add_this_server_to_master_server()
 
     # get the round_specification for next round from master_nodes
     request_round_specification_from_network

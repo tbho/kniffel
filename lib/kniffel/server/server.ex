@@ -43,7 +43,7 @@ defmodule Kniffel.Server do
 
   def cast_changeset(server, attrs) do
     server
-    |> cast_changeset(attrs, [:id, :url, :public_key, :authority])
+    |> cast(attrs, [:id, :url, :public_key, :authority])
   end
 
   # -----------------------------------------------------------------
@@ -203,7 +203,7 @@ defmodule Kniffel.Server do
     this_server = Server.get_this_server
     {:ok, response} =
       HTTPoison.post(
-        server.url <> "/api/servers",
+        master_server.url <> "/api/servers",
         Poison.encode!(%{server: %{url: this_server.url}}),
         [
           {"Content-Type", "application/json"}
