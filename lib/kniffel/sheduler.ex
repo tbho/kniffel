@@ -5,7 +5,7 @@ defmodule Kniffel.Sheduler do
   @round_offset 2
 
   use GenServer
-  alias Kniffel.{Server, Blockchain.Crypto}
+  alias Kniffel.{Server, Blockchain, Blockchain.Crypto}
   alias DateTime
   require Logger
 
@@ -18,6 +18,8 @@ defmodule Kniffel.Sheduler do
     # TODO: add server to network
     Server.add_this_server_to_master_server()
 
+    Blockchain.compare_block_height_with_network()
+
     # get the round_specification for next round from master_nodes
     request_round_specification_from_network
 
@@ -26,6 +28,7 @@ defmodule Kniffel.Sheduler do
       get_round_specification()
       |> get_round_time(:round_begin)
       |> calculate_diff_to_now
+      |> IO.inspect
 
     # shedule new round
     Process.send_after(self(), :next_round, diff_milliseconds)

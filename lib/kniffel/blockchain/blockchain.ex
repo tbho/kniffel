@@ -451,7 +451,7 @@ defmodule Kniffel.Blockchain do
 
     block_height_responses =
       Enum.map(servers, fn server ->
-        {:ok, response} = HTTPoison.get(server.url <> "/api/block/height")
+        {:ok, response} = HTTPoison.get(server.url <> "/api/blocks/height")
 
         with %{"height_response" => height_response} <- Poison.decode!(response.body),
              {:ok, timestamp} <- Timex.parse(height_response["timestamp"], "{ISO:Extended}") do
