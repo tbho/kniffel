@@ -16,6 +16,7 @@ defmodule Kniffel.Sheduler do
   def init(state) do
     # TODO: compare blocks with other servers (get server adress without adding server to network)
     # TODO: add server to network
+    add_this_server_to_master_server()
 
     # get the round_specification for next round from master_nodes
     request_round_specification_from_network
@@ -200,13 +201,13 @@ defmodule Kniffel.Sheduler do
     time_now =
       Timex.now()
       |> Timex.add(Timex.Duration.from_seconds(@round_offset))
-      # |> Timex.format!("{ISO:Extended}")
+
+    # |> Timex.format!("{ISO:Extended}")
 
     %{
       round_length: @default_round_length,
       round_begin: time_now,
-      round_number: 1,
-      default: true
+      round_number: 1
     }
   end
 
@@ -223,8 +224,7 @@ defmodule Kniffel.Sheduler do
           %{
             round_length: round_response["round_length"],
             round_begin: round_begin,
-            round_number: round_response["round_number"],
-            default: round_response["default"]
+            round_number: round_response["round_number"]
           }
         else
           %{"error" => _error} ->
@@ -257,8 +257,7 @@ defmodule Kniffel.Sheduler do
   def get_next_round_specification() do
     with %{
            round_length: round_length,
-           round_number: round_number,
-           default: default
+           round_number: round_number
          } = round_specification <- Kniffel.Cache.get(:round_specification) do
       new_round_begin = get_round_time(round_specification, :next_round)
 
@@ -266,7 +265,6 @@ defmodule Kniffel.Sheduler do
         round_length: round_length,
         round_begin: new_round_begin,
         round_number: round_number + 1
-        default: default
       }
     else
       nil ->

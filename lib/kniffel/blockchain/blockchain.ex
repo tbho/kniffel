@@ -376,58 +376,183 @@ defmodule Kniffel.Blockchain do
 
     true = propose_response_count >= calculate_min_propose_response_count()
 
+    this_server = Server.get_this_server()
+
     Server.get_authorized_servers(false)
     |> Enum.map(fn server ->
-      {:ok, _response} =
-        HTTPoison.post(
-          server.url <> "/api/blocks",
-          Poison.encode!(%{block: Block.json_encode(block)}),
-          [
-            {"Content-Type", "application/json"}
-          ]
-        )
+      with {:ok, :accept} <-
+             HTTPoison.post(
+               server.url <> "/api/blocks/finalize",
+               Poison.encode!(%{
+                 block_height: %{
+                   height: block.index,
+                   timestamp: Timex.format!(block.timestamp, "{ISO:Extended}"),
+                   server_id: this_server.id,
+                   hash: block.hash
+                 }
+               }),
+               [
+                 {"Content-Type", "application/json"}
+               ]
+             ) do
+      else
+        {:ok, :blocks_do_not_match} ->
+          compare_block_height_with_network
+
+        {:error, _} ->
+          nil
+      end
     end)
   end
 
-  def handle_height_change(
-        %{"server_id" => server_id, "data" => data, "index" => index} = block_params
-      ) do
-    with data <- Poison.decode!(data),
-         %Server{authority: true} = server <- Server.get_server(server_id) do
-      case get_block(index) do
-        %Block{} = block ->
-          true = block_params["hash"] == block.hash
-          true = block_params["signature"] == block.signature
-          {:ok, block}
+  def handle_height_change(%{
+        "server_id" => server_id,
+        "hash" => hash,
+        "height" => height,
+        "timestamp" => timestamp
+      }) do
+    with %Server{authority: true} = server <- Server.get_server(server_id),
+         {:leader, true} <- {:leader, is_leader?(server)},
+         {:block, %Block{} = last_block} = {:block, get_last_block()},
+         true = height == last_block.index,
+         true = hash == last_block.hash do
+      # TODO: spread block to slave nodes
+      {:ok, :accept}
+    else
+      # --- Server.get_server(server_id) ---------------
+      %Server{} = server ->
+        {:error, :no_master_node}
 
-        nil ->
-          transactions =
-            Enum.map(data["transactions"], fn transaction_params ->
-              transaction = get_transaction(transaction_params["id"])
+      nil ->
+        {:error, :unknown_server}
 
-              case transaction do
-                %Transaction{} = transaction ->
-                  transaction
+      # --- is_leader(server) --------------------------
+      {:leader, false} ->
+        {:error, :server_is_not_leader}
 
-                nil ->
-                  get_transaction_from_server(transaction.id, server.url)
+      # --- get_last_block -----------------------------
+      {:block, _} ->
+        {:error, :could_not_request_last_block}
+
+      # --- index and hash comparison ------------------
+      false ->
+        %Block{} = block = compare_block_height_with_network()
+
+        if height == block.index and hash == block.hash do
+          {:ok, :accept}
+        else
+          {:ok, :blocks_do_not_match}
+        end
+    end
+  end
+
+  def compare_block_height_with_network() do
+    servers = Server.get_authorized_servers(false)
+
+    block_height_responses =
+      Enum.map(servers, fn server ->
+        {:ok, response} = HTTPoison.get(server.url <> "/api/block/height")
+
+        with %{"height_response" => height_response} <- Poison.decode!(response.body),
+             {:ok, timestamp} <- Timex.parse(height_response["timestamp"], "{ISO:Extended}") do
+          Map.put(height_response, "timestamp", timestamp)
+        else
+          %{"error" => _error} ->
+            nil
+        end
+      end)
+
+    # if no server is in network empty list is returned
+    # otherwise answers will be grouped and answer with highest count is choosen
+    # if all respones are different the block height with highest index and oldest timestamp is choosen
+    with false <- Enum.empty?(block_height_responses),
+         uniq_block_heights <- Enum.uniq(block_height_responses),
+         grouped_block_height <-
+           Enum.map(uniq_block_heights, fn uniq_block_height ->
+             {uniq_block_height, Enum.count(block_height_responses, &(uniq_block_height == &1))}
+           end) do
+      case Enum.all?(grouped_block_height, &(elem(&1, 1) == 1)) do
+        true ->
+          block_height = get_highest_and_oldest_block_height(block_height_responses)
+
+          %Block{} = last_block = Kniffel.Blockchain.get_last_block()
+          with {:index, true} <- {:index, last_block.index == block_height["index"]},
+               {:hash, true} <- {:hash, last_block.hash == block_height["hash"]} do
+          else
+            {:index, false} ->
+              if last_block.index > block_height["index"] do
+                server = Server.get(block_height["server_id"])
+                {:ok, _response} =
+                  HTTPoison.post(
+                    server.url <> "/api/blocks",
+                    Poison.encode!(%{block: Block.json_encode(last_block)}),
+                    [
+                      {"Content-Type", "application/json"}
+                    ]
+                  )
+              else
+                server = Server.get(block_height["server_id"])
+                {:ok, response} =
+                  HTTPoison.get(server.url <> "/api/block/#{block_height["index"]}")
+
+                with %{"block" => block_response} <- Poison.decode!(response.body) do
+                  {:ok, block} = Blockchain.insert_block_from_network(block_response)
+                end
               end
-            end)
 
-          block_params =
-            block_params
-            |> Map.drop(["transactions"])
-            |> Map.put("server", server)
-            |> Map.put("transactions", transactions)
+            {:hash, false} ->
+              if last_block.timestamp > block_height["timestamp"] do
+                server = Server.get(block_height["server_id"])
+                {:ok, _response} =
+                  HTTPoison.post(
+                    server.url <> "/api/blocks",
+                    Poison.encode!(%{block: Block.json_encode(last_block)}),
+                    [
+                      {"Content-Type", "application/json"}
+                    ]
+                  )
+              else
+                server = Server.get(block_height["server_id"])
+                {:ok, response} =
+                  HTTPoison.get(server.url <> "/api/block/#{block_height["index"]}")
 
-          %Block{}
-          |> Repo.preload([:server, :transactions])
-          |> Block.changeset_p2p(block_params)
-          |> Repo.insert()
+                with %{"block" => block_response} <- Poison.decode!(response.body) do
+                  {:ok, block} = Blockchain.insert_block_from_network(block_response)
+                end
+              end
+          end
+
+        false ->
+          sort_block_heights = Enum.sort_by(grouped_block_height, &elem(&1, 1), &>=/2)
+          {block_height, _count} = List.first(sort_block_heights)
+
+          server = Server.get(block_height["server_id"])
+          {:ok, response} = HTTPoison.get(server.url <> "/api/block/#{block_height["index"]}")
+
+          with %{"block" => block_response} <- Poison.decode!(response.body) do
+            {:ok, block} = Blockchain.insert_block_from_network(block_response)
+          end
       end
     else
-      nil ->
-        {:unknown_server, server_id}
+      true ->
+        nil
+    end
+  end
+
+  defp get_highest_and_oldest_block_height(block_height_responses) do
+    sort_block_heights = Enum.sort_by(block_height_responses, & &1["height"], &>=/2)
+    block_height = List.first(sort_block_heights)
+
+    case Enum.count(block_height_responses, &(block_height["height"] == &1["height"])) do
+      n when n > 1 ->
+        same_height_blocks =
+          Enum.filter(block_height_responses, &(&1["height"] == block_height["height"]))
+
+        sort_same_height_blocks = Enum.sort_by(same_height_blocks, & &1["timestamp"])
+        List.first(sort_same_height_blocks)
+
+      1 ->
+        block_height
     end
   end
 

@@ -27,8 +27,22 @@ defmodule KniffelWeb.BlockController do
     json(conn, %{block_response: ServerResponse.json(block_response)})
   end
 
-  def finalize(conn, %{"block" => block_params}) do
-    {:ok, block} = Blockchain.insert_block_from_network(block_params)
+  def finalize(conn, %{"block_height" => height_params}) do
+    {:ok, block} = Blockchain.handle_height_change(height_params)
     render(conn, "show.json", block: block)
+  end
+
+  def height(conn, _attrs) do
+    server = Server.get_this_server()
+    block = Blockchain.get_last_block()
+
+    json(conn, %{
+      height_response: %{
+        height: block.index,
+        timestamp: Timex.format!(block.timestamp, "{ISO:Extended}"),
+        server_id: server.id,
+        hash: block.hash
+      }
+    })
   end
 end

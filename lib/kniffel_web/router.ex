@@ -68,6 +68,8 @@ defmodule KniffelWeb.Router do
 
     post "/blocks/propose", BlockController, :propose
     post "/blocks/commit", BlockController, :commit
+    post "/blocks/finalize", BlockController, :finalize
+    get "/blocks/height", BlockController, :height
     resources "/blocks", BlockController, only: [:index, :show, :create]
   end
 end

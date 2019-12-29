@@ -13,6 +13,8 @@ defmodule Kniffel.Server do
   @primary_key {:id, :string, autogenerate: false}
   @foreign_key_type :string
 
+  @server_white_list ["https://kniffel.app", "http://hoge.cloud:3000"]
+
   schema "server" do
     field :url, :string
     field :public_key, :string
@@ -22,19 +24,26 @@ defmodule Kniffel.Server do
   end
 
   @doc false
-  def changeset(server, attrs = %{"public_key" => public_key_string}) do
+
+
+  @doc false
+  def changeset(server, attrs = %{"public_key" => public_key_string, "url" => url}) do
     {:ok, public_key} = ExPublicKey.loads(public_key_string)
     {:ok, public_key_pem} = ExPublicKey.pem_encode(public_key)
 
     id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
-
     attrs =
       attrs
       |> Map.put("public_key", public_key_pem)
       |> Map.put("id", id)
+      |> Map.put("authority", url in @server_white_list)
 
+    cast_changeset(server, attrs)
+  end
+
+  def cast_changeset(server, attrs) do
     server
-    |> cast(attrs, [:id, :url, :public_key, :authority])
+    |> cast_changeset(attrs, [:id, :url, :public_key, :authority])
   end
 
   # -----------------------------------------------------------------
@@ -128,6 +137,19 @@ defmodule Kniffel.Server do
       |> Server.changeset(server["server"])
       |> Repo.insert()
 
+    if server.authority do
+      servers = get_authorized_servers(false)
+      Enum.map(servers, fn server ->
+        HTTPoison.post(
+          server.url <> "/api/servers",
+          Poison.encode!(%{server: %{url: url}}),
+          [
+            {"Content-Type", "application/json"}
+          ]
+        )
+      end)
+    end
+
     {:ok, _response} =
       HTTPoison.post(
         server.url <> "/api/servers",
@@ -142,7 +164,7 @@ defmodule Kniffel.Server do
 
   def update_server(server, server_params) do
     server
-    |> Server.changeset(server_params)
+    |> Server.cast_changeset(server_params)
     |> Repo.update()
   end
 
@@ -173,6 +195,23 @@ defmodule Kniffel.Server do
       server = get_this_server()
 
       %{dices: dices, signature: signature, server_id: server.id, timestamp: timestamp}
+    end
+  end
+
+  def add_this_server_to_master_server() do
+    master_server = Server.get_authorized_server(false)
+    this_server = Server.get_this_server
+    {:ok, response} =
+      HTTPoison.post(
+        server.url <> "/api/servers",
+        Poison.encode!(%{server: %{url: this_server.url}}),
+        [
+          {"Content-Type", "application/json"}
+        ]
+      )
+
+    with %{"server" => server_response} <- Poison.decode!(response.body) do
+      Server.update_server(this_server, server_response)
     end
   end
 end
