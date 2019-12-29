@@ -1,22 +1,21 @@
 defmodule KniffelWeb.ShedulerController do
   use KniffelWeb, :controller
 
-  alias Kniffel.User
   alias Kniffel.Sheduler
 
-  def next_round(conn, attrs) do
-    case Kniffel.Cache.get(:round_specification) do
-      nil ->
-        json(conn, %{error: :not_set})
+  def next_round(conn, _attrs) do
+    case Kniffel.Sheduler.get_next_round_specification() do
+      {:error, message} ->
+        json(conn, %{error: message})
 
       hit ->
         json(conn, %{round_response: hit})
     end
   end
 
-  def cancel_block_propose(conn, params) do
-    case Blockchain.cancel_block_propose(params) do
-      {:ok, _cancel} ->
+  def cancel_block_propose(conn, %{"cancel_block_propose" => params}) do
+    case Sheduler.handle_cancel_block_propose(params) do
+      :ok ->
         json(conn, :ok)
 
       {:error, message} ->
@@ -24,9 +23,9 @@ defmodule KniffelWeb.ShedulerController do
     end
   end
 
-  def cancel_block_commit(conn, params) do
-    case Blockchain.cancel_block_commit(params) do
-      {:ok, _cancel} ->
+  def cancel_block_commit(conn, %{"cancel_block_commit" => params}) do
+    case Sheduler.handle_cancel_block_commit(params) do
+      :ok ->
         json(conn, :ok)
 
       {:error, message} ->
