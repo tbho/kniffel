@@ -99,7 +99,7 @@ defmodule Kniffel.Seed do
         )
 
         Blockchain.propose_new_block()
-        Blockchain.create_new_block()
+        Blockchain.commit_new_block()
 
         scores_second = Enum.take_random(scores_first, Kernel.trunc(length(scores_first) / 2))
         scores_first = scores_first -- scores_second
@@ -118,7 +118,7 @@ defmodule Kniffel.Seed do
         )
 
         Blockchain.propose_new_block()
-        Blockchain.create_new_block()
+        Blockchain.commit_new_block()
 
         scores_third = Enum.take_random(scores_second, Kernel.trunc(length(scores_second) / 2))
         scores_second = scores_second -- scores_third
@@ -137,7 +137,7 @@ defmodule Kniffel.Seed do
         )
 
         Blockchain.propose_new_block()
-        Blockchain.create_new_block()
+        Blockchain.commit_new_block()
 
         (scores_first ++ scores_second ++ scores_third)
         |> Enum.map(&update_score(&1))
@@ -145,7 +145,7 @@ defmodule Kniffel.Seed do
         Enum.map(users, &create_transaction(&1))
 
         Blockchain.propose_new_block()
-        Blockchain.create_new_block()
+        Blockchain.commit_new_block()
       end)
     end)
   end

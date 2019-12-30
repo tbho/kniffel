@@ -26,6 +26,8 @@ defmodule Kniffel.Sheduler do
          # get the round_specification for next round from master_nodes
          r when r in [:ok, :default] <- request_round_specification_from_network(),
          %{} = round_specification = get_next_round_specification() do
+
+      Kniffel.Cache.set(:round_specification, round_specification)
       # calculate diff (in milliseconds) till start of new round
       diff_milliseconds =
         round_specification
@@ -56,7 +58,6 @@ defmodule Kniffel.Sheduler do
   def handle_info(:next_round, state) do
     Logger.info("--- Start a new round --------------------------------------------------")
     round_specification = get_round_specification()
-
     # get other master nodes
     servers = Server.get_authorized_servers(false)
 
@@ -83,10 +84,10 @@ defmodule Kniffel.Sheduler do
     else
       # if no other server in network save new round specification
       Kniffel.Cache.set(:round_specification, get_next_round_specification)
+      # schedule the new round
+      schedule(round_specification, :next_round)
     end
 
-    # schedule the new round
-    schedule(round_specification, :next_round)
     {:noreply, state}
   end
 

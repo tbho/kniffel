@@ -587,11 +587,11 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  defp delete_all_blocks_with_higher_index(index) do
+  def delete_all_blocks_with_higher_index(index) do
     Block
     |> where([b], b.index > ^index)
     |> join(:left, [b], t in assoc(b, :transactions))
-    |> select([b, t], {t.id})
+    |> select([b, t], t.id)
     |> Repo.all()
     |> IO.inspect()
   end

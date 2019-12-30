@@ -20,16 +20,16 @@ defmodule Kniffel.Request do
          {:json, {:ok, response_body}} <- {:json, Poison.decode(response.body)} do
       {:ok, response_body}
     else
-      {:request, {:error, message}} ->
+      {:request, {:error, _message}} ->
         {:error, "request_failed"}
 
-      {:status_code, status_code} ->
+      {:status_code, _status_code} ->
         {:error, "status_code"}
 
       false ->
         {:error, "wrong_content_type"}
 
-      {:json, {:error, message}} ->
+      {:json, {:error, _message}} ->
         {:error, "decode_failed"}
     end
   end
