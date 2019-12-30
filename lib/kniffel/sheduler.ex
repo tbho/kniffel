@@ -19,14 +19,16 @@ defmodule Kniffel.Sheduler do
   end
 
   def handle_info(:prepare_node, state) do
-    # add server to network
-    with :ok <- Server.add_this_server_to_master_server(),
-         # compare blocks with other servers (get server adress without adding server to network)
-         :ok <- Blockchain.compare_block_height_with_network(),
-         # get the round_specification for next round from master_nodes
-         r when r in [:ok, :default] <- request_round_specification_from_network(),
-         %{} = round_specification = get_next_round_specification() do
 
+    Logger.info("-# Prepare and start sheduler")
+
+    with # compare blocks with other servers (get server adress without adding server to network)
+          :ok <- Blockchain.compare_block_height_with_network(),
+          # get the round_specification for next round from master_nodes
+          r when r in [:ok, :default] <- request_round_specification_from_network(),
+          # add server to network
+          :ok <- Server.add_this_server_to_master_server(),
+         %{} = round_specification = get_next_round_specification() do
       Kniffel.Cache.set(:round_specification, round_specification)
       # calculate diff (in milliseconds) till start of new round
       diff_milliseconds =
@@ -36,6 +38,11 @@ defmodule Kniffel.Sheduler do
 
       # shedule new round
       Process.send_after(self(), :next_round, diff_milliseconds)
+
+      Logger.info(
+        "-✓ Started sheduler successful! First round will start at: " <>
+          Timex.format!(get_round_time(round_specification, :round_begin), "{ISO:Extended}")
+      )
     else
       :error ->
         Logger.error(
@@ -56,7 +63,7 @@ defmodule Kniffel.Sheduler do
   end
 
   def handle_info(:next_round, state) do
-    Logger.info("--- Start a new round --------------------------------------------------")
+    Logger.info("-> Start a new round")
     round_specification = get_round_specification()
     # get other master nodes
     servers = Server.get_authorized_servers(false)
@@ -82,10 +89,16 @@ defmodule Kniffel.Sheduler do
           |> schedule(:cancel_block_commit)
       end
     else
+      Logger.info("--- No other master node found! I will shedule a new round and try again.")
       # if no other server in network save new round specification
-      Kniffel.Cache.set(:round_specification, get_next_round_specification)
+      next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
       # schedule the new round
       schedule(round_specification, :next_round)
+
+      Logger.info(
+        "-! Round finished. Next Round will start at: " <>
+          Timex.format!(next_round.round_begin, "{ISO:Extended}")
+      )
     end
 
     {:noreply, state}
@@ -201,17 +214,17 @@ defmodule Kniffel.Sheduler do
   end
 
   defp get_round_specification() do
-      case Kniffel.Cache.get(:round_specification) do
-        %{
-          round_length: _round_length,
-          round_number: _round_number,
-          round_begin: _round_begin
-        } = round_specification ->
-          round_specification
+    case Kniffel.Cache.get(:round_specification) do
+      %{
+        round_length: _round_length,
+        round_number: _round_number,
+        round_begin: _round_begin
+      } = round_specification ->
+        round_specification
 
-        nil ->
-          {:error, :no_round_specification_in_cache}
-      end
+      nil ->
+        {:error, :no_round_specification_in_cache}
+    end
   end
 
   defp get_default_round_specification() do

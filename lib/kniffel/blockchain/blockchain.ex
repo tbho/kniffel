@@ -561,10 +561,9 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  def insert_block_from_network(
-        %{"server_id" => server_id, "index" => index, "hash" => hash}
-      ) do
-        %Block{} = last_block = get_last_block()
+  def insert_block_from_network(%{"server_id" => server_id, "index" => index, "hash" => hash}) do
+    %Block{} = last_block = get_last_block()
+
     with {:index, true} <- {:index, last_block.index == index},
          {:hash, true} <- {:hash, last_block.hash == hash} do
       :ok

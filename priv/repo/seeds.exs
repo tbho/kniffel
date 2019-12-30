@@ -44,7 +44,7 @@ case Server.get_server_by_url(url) do
     server
 
   nil ->
-    with {:ok, %{"server" => server}} <- Kniffel.Request.get(url <> "/api/servers/this"),
+    with {:ok, %{"server" => server}} <- Request.get(url <> "/api/servers/this"),
          %Ecto.Changeset{} = changeset <- Server.cast_changeset(%Server{}, server),
          {:ok, server} <- Repo.insert(changeset) do
       server
