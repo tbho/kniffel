@@ -14,6 +14,10 @@ alias Kniffel.{Server, Blockchain, Repo}
 alias Kniffel.Blockchain.Crypto
 alias Kniffel.Blockchain.Block
 import Ecto.Query, warn: false
+alias Kniffel.Request
+require Logger
+
+Logger.info("Running seed script...")
 
 {:ok, private_key} = Crypto.private_key()
 {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
@@ -40,13 +44,22 @@ case Server.get_server_by_url(url) do
     server
 
   nil ->
-    {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
-    {:ok, server} = Poison.decode(response.body)
+    with {:ok, %{"server" => server}} <- Kniffel.Request.get(url <> "/api/servers/this"),
+         %Ecto.Changeset{} = changeset <- Server.cast_changeset(%Server{}, server),
+         {:ok, server} <- Repo.insert(changeset) do
+      server
+    else
+      {:error, %Ecto.Changeset{}} ->
+        raise(
+          "Master-node " <> url <> " could not be inserted into databse! Please control params."
+        )
 
-    {:ok, server} =
-      %Server{}
-      |> Server.cast_changeset(server["server"])
-      |> Repo.insert()
+      {:error, _message} ->
+        raise(
+          "Master-node " <>
+            url <> " could not be reached! Please control connection or if master-node is up."
+        )
+    end
 end
 
 case Blockchain.get_block(0) do
@@ -56,6 +69,8 @@ case Blockchain.get_block(0) do
   nil ->
     Blockchain.genesis()
 end
+
+Logger.info("Success!")
 
 # if System.get_env("ENV_NAME") != "production" do
 #   Code.eval_file(

@@ -24,14 +24,12 @@ defmodule Kniffel.Server do
   end
 
   @doc false
-
-
-  @doc false
   def changeset(server, attrs = %{"public_key" => public_key_string, "url" => url}) do
     {:ok, public_key} = ExPublicKey.loads(public_key_string)
     {:ok, public_key_pem} = ExPublicKey.pem_encode(public_key)
 
     id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+
     attrs =
       attrs
       |> Map.put("public_key", public_key_pem)
@@ -41,6 +39,7 @@ defmodule Kniffel.Server do
     cast_changeset(server, attrs)
   end
 
+  @doc false
   def cast_changeset(server, attrs) do
     server
     |> cast(attrs, [:id, :url, :public_key, :authority])
@@ -129,37 +128,35 @@ defmodule Kniffel.Server do
   # end
 
   def create_server(%{"url" => url}) do
-    {:ok, response} = HTTPoison.get(url <> "/api/servers/this")
-    {:ok, server} = Poison.decode(response.body)
+    with {:ok, %{"server" => server}} <- Kniffel.Request.get(url <> "/api/servers/this"),
+         %Ecto.Changeset{} = changeset <- Server.changeset(%Server{}, server),
+         {:ok, server} <- Repo.insert(changeset),
+         {:ok, _reponse} <-
+           Kniffel.Request.post(url <> "/api/servers", %{
+             server: %{url: Server.get_this_server().url}
+           }) do
+      if server.authority do
+        servers = get_authorized_servers(false)
 
-    {:ok, server} =
-      %Server{}
-      |> Server.changeset(server["server"])
-      |> Repo.insert()
+        Enum.map(servers, fn server ->
+          HTTPoison.post(
+            server.url <> "/api/servers",
+            Poison.encode!(%{server: %{url: url}}),
+            [
+              {"Content-Type", "application/json"}
+            ]
+          )
+        end)
+      end
 
-    if server.authority do
-      servers = get_authorized_servers(false)
-      Enum.map(servers, fn server ->
-        HTTPoison.post(
-          server.url <> "/api/servers",
-          Poison.encode!(%{server: %{url: url}}),
-          [
-            {"Content-Type", "application/json"}
-          ]
-        )
-      end)
+      {:ok, server}
+    else
+      {:error, %Ecto.Changeset{}} ->
+        {:error, "node " <> url <> " could not be inserted into database!"}
+
+      {:error, _message} ->
+        {:error, "node " <> url <> " could not be reached!"}
     end
-
-    {:ok, _response} =
-      HTTPoison.post(
-        server.url <> "/api/servers",
-        Poison.encode!(%{server: %{url: Server.get_this_server().url}}),
-        [
-          {"Content-Type", "application/json"}
-        ]
-      )
-
-    {:ok, server}
   end
 
   def update_server(server, server_params) do
@@ -199,22 +196,27 @@ defmodule Kniffel.Server do
   end
 
   def add_this_server_to_master_server() do
-    this_server = Server.get_this_server
-    if !this_server.authority do
-      master_server = Server.get_authorized_server(false)
+    with %Server{} = this_server <- Server.get_this_server(),
+         false <- this_server.authority,
+         %Server{} = master_server <- Server.get_authorized_server(false),
+         {:ok, %{"server" => server}} <-
+           Kniffel.Request.post(master_server.url <> "/api/servers", %{
+             server: %{url: this_server.url}
+           }),
+         {:ok, _server} <- Server.update_server(this_server, server) do
+      :ok
+    else
+      true ->
+        :ok
 
-      {:ok, response} =
-        HTTPoison.post(
-          master_server.url <> "/api/servers",
-          Poison.encode!(%{server: %{url: this_server.url}}),
-          [
-            {"Content-Type", "application/json"}
-          ]
-        )
+      nil ->
+        {:error, "could not get server from database!"}
 
-      with %{"server" => server_response} <- Poison.decode!(response.body) do
-        Server.update_server(this_server, server_response)
-      end
+      {:error, %Ecto.Changeset{}} ->
+        {:error, "node could not be updatet in database!"}
+
+      {:error, _message} ->
+        {:error, "master-node could not be reached!"}
     end
   end
 end

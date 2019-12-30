@@ -14,26 +14,43 @@ defmodule Kniffel.Sheduler do
   end
 
   def init(state) do
-    # TODO: compare blocks with other servers (get server adress without adding server to network)
-    # TODO: add server to network
-    Server.add_this_server_to_master_server()
-
-    Blockchain.compare_block_height_with_network()
-
-    # get the round_specification for next round from master_nodes
-    request_round_specification_from_network
-
-    # calculate diff (in milliseconds) till start of new round
-    diff_milliseconds =
-      get_next_round_specification()
-      |> get_round_time(:round_begin)
-      |> calculate_diff_to_now
-      |> IO.inspect
-
-    # shedule new round
-    Process.send_after(self(), :next_round, diff_milliseconds)
-
+    Process.send(self(), :prepare_node, [])
     {:ok, state}
+  end
+
+  def handle_info(:prepare_node, state) do
+    # add server to network
+    with :ok <- Server.add_this_server_to_master_server(),
+         # compare blocks with other servers (get server adress without adding server to network)
+         :ok <- Blockchain.compare_block_height_with_network(),
+         # get the round_specification for next round from master_nodes
+         r when r in [:ok, :default] <- request_round_specification_from_network(),
+         %{} = round_specification = get_next_round_specification() do
+      # calculate diff (in milliseconds) till start of new round
+      diff_milliseconds =
+        round_specification
+        |> get_round_time(:round_begin)
+        |> calculate_diff_to_now
+
+      # shedule new round
+      Process.send_after(self(), :next_round, diff_milliseconds)
+    else
+      :error ->
+        Logger.error(
+          "Error while preparing to start sheduler (request data from network), repeating in 5 seconds again!"
+        )
+
+        Process.send_after(self(), :prepare_node, 10_000)
+
+      {:error, _} ->
+        Logger.error(
+          "Error while preparing to start sheduler (no round_specification in cache), repeating in 5 seconds again!"
+        )
+
+        Process.send_after(self(), :prepare_node, 10_000)
+    end
+
+    {:noreply, state}
   end
 
   def handle_info(:next_round, state) do
@@ -183,29 +200,25 @@ defmodule Kniffel.Sheduler do
   end
 
   defp get_round_specification() do
-    round_specification =
       case Kniffel.Cache.get(:round_specification) do
         %{
-          round_length: round_length,
-          round_number: round_number,
-          round_begin: round_begin
+          round_length: _round_length,
+          round_number: _round_number,
+          round_begin: _round_begin
         } = round_specification ->
           round_specification
 
         nil ->
-          get_default_round_specification()
+          {:error, :no_round_specification_in_cache}
       end
-
-    Kniffel.Cache.set(:round_specification, round_specification)
-    round_specification
   end
 
   defp get_default_round_specification() do
     time_now =
-      Timex.now()
-      |> Timex.add(Timex.Duration.from_seconds(@round_offset))
-
-    # |> Timex.format!("{ISO:Extended}")
+      Timex.add(
+        Timex.now(),
+        Timex.Duration.from_seconds(@round_offset)
+      )
 
     %{
       round_length: @default_round_length,
@@ -219,11 +232,9 @@ defmodule Kniffel.Sheduler do
 
     round_specification_responses =
       Enum.map(servers, fn server ->
-        {:ok, response} = HTTPoison.get(server.url <> "/api/sheduler/next_round")
-
-        with %{"round_response" => round_response} <- Poison.decode!(response.body) do
-          {:ok, round_begin} = Timex.parse(round_response["round_begin"], "{ISO:Extended}")
-
+        with {:ok, %{"round_response" => round_response}} <-
+               Kniffel.Request.get(server.url <> "/api/sheduler/next_round"),
+             {:ok, round_begin} <- Timex.parse(round_response["round_begin"], "{ISO:Extended}") do
           %{
             round_length: round_response["round_length"],
             round_begin: round_begin,
@@ -246,10 +257,11 @@ defmodule Kniffel.Sheduler do
          sort_specs <- Enum.sort_by(grouped_specs, &elem(&1, 1), &>=/2) do
       {round_specification, _count} = List.first(sort_specs)
       Kniffel.Cache.set(:round_specification, round_specification)
-      round_specification
+      :ok
     else
       true ->
-        nil
+        Kniffel.Cache.set(:round_specification, get_default_round_specification())
+        :default
     end
   end
 
@@ -330,26 +342,17 @@ defmodule Kniffel.Sheduler do
 
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
-        {:ok, response} =
-          HTTPoison.post(
-            server.url <> "/api/sheduler/cancel_block_commit",
-            Poison.encode!(%{cancel_block_commit: Map.put(data, :signature, signature)}),
-            [
-              {"Content-Type", "application/json"}
-            ]
-          )
-
-        with %{"cancel_block_propose_response" => cancel_block_propose_response} <-
-               Poison.decode!(response.body) do
-          :ok = cancel_block_propose_response
-        end
+        {:ok, %{"cancel_block_propose_response" => :ok}} =
+          Kniffel.Request.post(server.url <> "/api/sheduler/cancel_block_commit", %{
+            cancel_block_commit: Map.put(data, :signature, signature)
+          })
       end)
     end
   end
 
   def handle_cancel_block_propose(%{
         "server_id" => server_id,
-        "round_number" => round_number,
+        "round_number" => _round_number,
         "reason" => reason
       }) do
     with %Server{authority: true} <- Server.get_server(server_id) do
@@ -373,7 +376,7 @@ defmodule Kniffel.Sheduler do
 
         :timeout ->
           # compare DateTime.now() to round_times
-          %{round_begin: round_begin, round_length: round_length} = get_round_specification()
+          %{round_begin: _round_begin, round_length: _round_length} = get_round_specification()
           :ok
 
         :not_valid ->
@@ -399,7 +402,7 @@ defmodule Kniffel.Sheduler do
 
   def handle_cancel_block_commit(%{
         "server_id" => server_id,
-        "round_number" => round_number,
+        "round_number" => _round_number,
         "reason" => reason
       }) do
     with %Server{authority: true} <- Server.get_server(server_id) do

@@ -8,12 +8,10 @@ defmodule Kniffel.Blockchain do
   alias Kniffel.Repo
 
   alias Kniffel.Blockchain.{
-    Crypto,
     Block,
     Block.Propose,
     Block.ServerResponse,
-    Transaction,
-    Sheduler
+    Transaction
   }
 
   alias Kniffel.{Game, Game.Score, User, Server}
@@ -397,7 +395,7 @@ defmodule Kniffel.Blockchain do
              ) do
       else
         {:ok, :blocks_do_not_match} ->
-          compare_block_height_with_network
+          compare_block_height_with_network()
 
         {:error, _} ->
           nil
@@ -408,8 +406,7 @@ defmodule Kniffel.Blockchain do
   def handle_height_change(%{
         "server_id" => server_id,
         "hash" => hash,
-        "height" => height,
-        "timestamp" => timestamp
+        "height" => height
       }) do
     with %Server{authority: true} = server <- Server.get_server(server_id),
          {:leader, true} <- {:leader, is_leader?(server)},
@@ -420,7 +417,7 @@ defmodule Kniffel.Blockchain do
       {:ok, :accept}
     else
       # --- Server.get_server(server_id) ---------------
-      %Server{} = server ->
+      %Server{} = _server ->
         {:error, :no_master_node}
 
       nil ->
@@ -446,97 +443,187 @@ defmodule Kniffel.Blockchain do
     end
   end
 
+  @doc """
+    This function is called if at finalize_block step the blocks in network don't
+    match. Function will compare heights in network and choose the height which
+    appears most. If all answers differ, block with highest index and oldest
+    timestamp is choosen and inserted or spread to network.
+  """
   def compare_block_height_with_network() do
-    servers = Server.get_authorized_servers(false)
-
-    block_height_responses =
-      Enum.map(servers, fn server ->
-        {:ok, response} = HTTPoison.get(server.url <> "/api/blocks/height")
-
-        with %{"height_response" => height_response} <- Poison.decode!(response.body),
-             {:ok, timestamp} <- Timex.parse(height_response["timestamp"], "{ISO:Extended}") do
-          Map.put(height_response, "timestamp", timestamp)
-        else
-          %{"error" => _error} ->
-            nil
-        end
-      end)
-
+    block_height_responses = get_heigt_from_network()
     # if no server is in network empty list is returned
     # otherwise answers will be grouped and answer with highest count is choosen
-    # if all respones are different the block height with highest index and oldest timestamp is choosen
+    # if all respones are unique the block height with highest index and oldest timestamp is choosen
     with false <- Enum.empty?(block_height_responses),
          uniq_block_heights <- Enum.uniq(block_height_responses),
          grouped_block_height <-
            Enum.map(uniq_block_heights, fn uniq_block_height ->
              {uniq_block_height, Enum.count(block_height_responses, &(uniq_block_height == &1))}
            end) do
-      case Enum.all?(grouped_block_height, &(elem(&1, 1) == 1)) do
-        true ->
-          block_height = get_highest_and_oldest_block_height(block_height_responses)
+      # test if all answers are unique (have a count of 1)
+      if Enum.all?(grouped_block_height, &(elem(&1, 1) == 1)) do
+        # ---------------------------
+        # -- all responses are unique
+        # ---------------------------
 
-          %Block{} = last_block = Kniffel.Blockchain.get_last_block()
-          with {:index, true} <- {:index, last_block.index == block_height["index"]},
-               {:hash, true} <- {:hash, last_block.hash == block_height["hash"]} do
-          else
-            {:index, false} ->
-              if last_block.index > block_height["index"] do
-                server = Server.get(block_height["server_id"])
-                {:ok, _response} =
-                  HTTPoison.post(
-                    server.url <> "/api/blocks",
-                    Poison.encode!(%{block: Block.json_encode(last_block)}),
-                    [
-                      {"Content-Type", "application/json"}
-                    ]
-                  )
-              else
-                server = Server.get(block_height["server_id"])
-                {:ok, response} =
-                  HTTPoison.get(server.url <> "/api/block/#{block_height["index"]}")
+        # get block with highest index and oldest timestamp from responses
+        block_height = get_highest_and_oldest_block_height(block_height_responses)
 
-                with %{"block" => block_response} <- Poison.decode!(response.body) do
-                  {:ok, block} = Blockchain.insert_block_from_network(block_response)
-                end
-              end
+        # get last block from this node
+        %Block{} = last_block = Kniffel.Blockchain.get_last_block()
 
-            {:hash, false} ->
-              if last_block.timestamp > block_height["timestamp"] do
-                server = Server.get(block_height["server_id"])
-                {:ok, _response} =
-                  HTTPoison.post(
-                    server.url <> "/api/blocks",
-                    Poison.encode!(%{block: Block.json_encode(last_block)}),
-                    [
-                      {"Content-Type", "application/json"}
-                    ]
-                  )
-              else
-                server = Server.get(block_height["server_id"])
-                {:ok, response} =
-                  HTTPoison.get(server.url <> "/api/block/#{block_height["index"]}")
+        # compare last block from this server to block with highest index and oldest timestamp from network
+        with {:index, true} <- {:index, last_block.index == block_height["index"]},
+             {:hash, true} <- {:hash, last_block.hash == block_height["hash"]} do
+          :ok
+        else
+          {:index, false} ->
+            # if this index is higher, block is spread to network, otherwise block is requested
+            if last_block.index > block_height["index"] do
+              send_block_to_server(block_height["server_id"], last_block)
+            else
+              request_and_insert_block_from_server(
+                block_height["server_id"],
+                block_height["index"]
+              )
+            end
 
-                with %{"block" => block_response} <- Poison.decode!(response.body) do
-                  {:ok, block} = Blockchain.insert_block_from_network(block_response)
-                end
-              end
-          end
+          {:hash, false} ->
+            # if this index is equal but hash don't match the timestamp is checked
+            # if this timestamp is older, block is spread to network, otherwise block is requested
+            if last_block.timestamp > block_height["timestamp"] do
+              send_block_to_server(block_height["server_id"], last_block)
+            else
+              request_and_insert_block_from_server(
+                block_height["server_id"],
+                block_height["index"]
+              )
+            end
+        end
+      else
+        # ---------------------------------------
+        # -- a response with a count > 1 is found
+        # ---------------------------------------
 
-        false ->
-          sort_block_heights = Enum.sort_by(grouped_block_height, &elem(&1, 1), &>=/2)
-          {block_height, _count} = List.first(sort_block_heights)
+        # the response with the highest count is selected
+        sort_block_heights = Enum.sort_by(grouped_block_height, &elem(&1, 1), &>=/2)
+        {block_height, _count} = List.first(sort_block_heights)
 
-          server = Server.get(block_height["server_id"])
-          {:ok, response} = HTTPoison.get(server.url <> "/api/block/#{block_height["index"]}")
-
-          with %{"block" => block_response} <- Poison.decode!(response.body) do
-            {:ok, block} = Blockchain.insert_block_from_network(block_response)
-          end
+        # and will be requested and inserted
+        request_and_insert_block_from_server(block_height["server_id"], block_height["index"])
       end
     else
       true ->
-        nil
+        # no other master servers found, so the last block is highest
+        :ok
     end
+  end
+
+  defp get_heigt_from_network() do
+    servers = Server.get_authorized_servers(false)
+
+    Enum.map(servers, fn server ->
+      with {:ok, %{"height_response" => height_response}} <-
+             Kniffel.Request.get(server.url <> "/api/blocks/height"),
+           {:ok, timestamp} <- Timex.parse(height_response["timestamp"], "{ISO:Extended}") do
+        Map.put(height_response, "timestamp", timestamp)
+      else
+        %{"error" => _error} ->
+          nil
+      end
+    end)
+  end
+
+  defp send_block_to_server(server_id, block) do
+    server = Server.get_server(server_id)
+
+    with {:ok, _response} <-
+           Kniffel.Request.post(server.url <> "/api/blocks", %{
+             block: Block.json_encode(block)
+           }) do
+      :ok
+    else
+      {:error, _message} ->
+        :error
+    end
+  end
+
+  defp request_and_insert_block_from_server(server_id, block_index) do
+    server = Server.get_server(server_id)
+
+    with {:ok, %{"block" => block_response}} <-
+           Kniffel.Request.get(server.url <> "/api/block/#{block_index}"),
+         {:ok, _block} <- insert_block_from_network(block_response) do
+      :ok
+    else
+      %{"error" => _error} ->
+        :error
+    end
+  end
+
+  def insert_block_from_network(
+        %{"server_id" => server_id, "index" => index, "hash" => hash}
+      ) do
+        %Block{} = last_block = get_last_block()
+    with {:index, true} <- {:index, last_block.index == index},
+         {:hash, true} <- {:hash, last_block.hash == hash} do
+      :ok
+    else
+      {:index, false} ->
+        # if last_block is higher
+        if last_block.index > index do
+          delete_all_blocks_with_higher_index(index)
+          # insert_block_network(block_params)
+          :ok
+        else
+          request_and_insert_block_from_server(server_id, last_block.index)
+          request_and_insert_block_from_server(server_id, last_block.index + 1)
+        end
+
+      {:hash, false} ->
+        # TODO: delete last block and mark transactions as not in block
+        # insert_block_network(block_params)
+        :ok
+    end
+  end
+
+  defp delete_all_blocks_with_higher_index(index) do
+    Block
+    |> where([b], b.index > ^index)
+    |> join(:left, [b], t in assoc(b, :transactions))
+    |> select([b, t], {t.id})
+    |> Repo.all()
+    |> IO.inspect()
+  end
+
+  defp insert_block_network(%{"server_id" => server_id, "data" => data} = block_params) do
+    IO.inspect(server_id)
+    IO.inspect(block_params)
+    data = Poison.decode!(data)
+
+    server = Server.get_server(server_id)
+
+    transactions =
+      Enum.map(data["transactions"], fn transaction_params ->
+        transaction = get_transaction(transaction_params["id"])
+
+        if transaction.signature == transaction_params["signature"] do
+          transaction
+        else
+          get_transaction_from_server(transaction_params["id"], server_id)
+        end
+      end)
+
+    block_params =
+      block_params
+      |> Map.drop(["transactions"])
+      |> Map.put("server", server)
+      |> Map.put("transactions", transactions)
+
+    %Block{}
+    |> Repo.preload([:server, :transactions])
+    |> Block.changeset_p2p(block_params)
+    |> Repo.insert()
   end
 
   defp get_highest_and_oldest_block_height(block_height_responses) do
@@ -561,7 +648,7 @@ defmodule Kniffel.Blockchain do
   end
 
   def get_position_in_server_queue(server) do
-    with server_queue when not is_nil(server_queue) <- calculate_ages_of_servers,
+    with server_queue when not is_nil(server_queue) <- calculate_ages_of_servers(),
          server_queue <- Enum.sort_by(server_queue, &elem(&1, 1), &>=/2) do
       {position, _changed} =
         Enum.reduce(server_queue, {1, false}, fn
@@ -616,7 +703,7 @@ defmodule Kniffel.Blockchain do
             nil ->
               Map.put_new(result, server.id, 0)
 
-            other ->
+            _other ->
               result
           end
         end)
