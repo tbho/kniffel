@@ -5,7 +5,8 @@ defmodule Kniffel.DBTasks do
     :postgrex,
     :ecto,
     :ecto_sql,
-    :tzdata
+    :tzdata,
+    :httpoison
   ]
 
   @repos Application.get_env(:kniffel, :ecto_repos, [])
@@ -17,6 +18,8 @@ defmodule Kniffel.DBTasks do
 
     stop_services()
   end
+
+  def seed(), do: seed(:args)
 
   def seed(_argv) do
     start_services()

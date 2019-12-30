@@ -16,7 +16,7 @@ defmodule Kniffel.Request do
   def handle_response(response) do
     with {:request, {:ok, response}} <- {:request, response},
          {:status_code, 200} <- {:status_code, response.status_code},
-         true <- {"Content-Type", "text/json"} in response.headers,
+         true <- {"Content-Type", "application/json; charset=utf-8"} in response.headers,
          {:json, {:ok, response_body}} <- {:json, Poison.decode(response.body)} do
       {:ok, response_body}
     else

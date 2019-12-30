@@ -37,6 +37,7 @@ case Server.get_server(id) do
     |> Repo.insert()
 end
 
+url = "http://hoge.cloud:3000"
 url = "https://kniffel.app"
 
 case Server.get_server_by_url(url) do
@@ -54,7 +55,7 @@ case Server.get_server_by_url(url) do
           "Master-node " <> url <> " could not be inserted into databse! Please control params."
         )
 
-      {:error, _message} ->
+      {:error, message} ->
         raise(
           "Master-node " <>
             url <> " could not be reached! Please control connection or if master-node is up."

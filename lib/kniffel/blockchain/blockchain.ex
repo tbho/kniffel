@@ -383,7 +383,7 @@ defmodule Kniffel.Blockchain do
                server.url <> "/api/blocks/finalize",
                Poison.encode!(%{
                  block_height: %{
-                   height: block.index,
+                   index: block.index,
                    timestamp: block.timestamp,
                    server_id: this_server.id,
                    hash: block.hash
@@ -406,12 +406,12 @@ defmodule Kniffel.Blockchain do
   def handle_height_change(%{
         "server_id" => server_id,
         "hash" => hash,
-        "height" => height
+        "index" => index
       }) do
     with %Server{authority: true} = server <- Server.get_server(server_id),
          {:leader, true} <- {:leader, is_leader?(server)},
          {:block, %Block{} = last_block} = {:block, get_last_block()},
-         true = height == last_block.index,
+         true = index == last_block.index,
          true = hash == last_block.hash do
       # TODO: spread block to slave nodes
       {:ok, :accept}
@@ -435,7 +435,7 @@ defmodule Kniffel.Blockchain do
       false ->
         %Block{} = block = compare_block_height_with_network()
 
-        if height == block.index and hash == block.hash do
+        if index == block.index and hash == block.hash do
           {:ok, :accept}
         else
           {:ok, :blocks_do_not_match}
@@ -450,7 +450,7 @@ defmodule Kniffel.Blockchain do
     timestamp is choosen and inserted or spread to network.
   """
   def compare_block_height_with_network() do
-    block_height_responses = get_heigt_from_network()
+    block_height_responses = get_heigt_from_network() |> IO.inspect()
     # if no server is in network empty list is returned
     # otherwise answers will be grouped and answer with highest count is choosen
     # if all respones are unique the block height with highest index and oldest timestamp is choosen
@@ -461,38 +461,49 @@ defmodule Kniffel.Blockchain do
              {uniq_block_height, Enum.count(block_height_responses, &(uniq_block_height == &1))}
            end) do
       # test if all answers are unique (have a count of 1)
+      IO.inspect(grouped_block_height)
+
       if Enum.all?(grouped_block_height, &(elem(&1, 1) == 1)) do
         # ---------------------------
         # -- all responses are unique
         # ---------------------------
+        IO.inspect("-- all responses are unique")
 
         # get block with highest index and oldest timestamp from responses
         block_height = get_highest_and_oldest_block_height(block_height_responses)
+        IO.inspect(block_height)
 
         # get last block from this node
-        %Block{} = last_block = Kniffel.Blockchain.get_last_block()
+        %Block{} = last_block = Kniffel.Blockchain.get_last_block() |> IO.inspect()
 
         # compare last block from this server to block with highest index and oldest timestamp from network
         with {:index, true} <- {:index, last_block.index == block_height["index"]},
              {:hash, true} <- {:hash, last_block.hash == block_height["hash"]} do
+          IO.inspect("blocks match")
           :ok
         else
           {:index, false} ->
             # if this index is higher, block is spread to network, otherwise block is requested
             if last_block.index > block_height["index"] do
-              send_block_to_server(block_height["server_id"], last_block)
+              IO.inspect("this block index is HIGHER! than network")
+              # send_block_to_server(block_height["server_id"], last_block)
+              :ok
             else
-              request_and_insert_block_from_server(
-                block_height["server_id"],
-                block_height["index"]
-              )
+              IO.inspect("this block index is LOWER! than network")
+              # request_and_insert_block_from_server(
+              #   block_height["server_id"],
+              #   block_height["index"]
+              # )
+              :ok
             end
 
           {:hash, false} ->
             # if this index is equal but hash don't match the timestamp is checked
             # if this timestamp is older, block is spread to network, otherwise block is requested
-            if last_block.timestamp > block_height["timestamp"] do
-              send_block_to_server(block_height["server_id"], last_block)
+            if last_block.timestamp < block_height["timestamp"] do
+              IO.inspect("this block timestamp is OLDER! than network")
+              # send_block_to_server(block_height["server_id"], last_block)
+              :ok
             else
               request_and_insert_block_from_server(
                 block_height["server_id"],
@@ -504,13 +515,16 @@ defmodule Kniffel.Blockchain do
         # ---------------------------------------
         # -- a response with a count > 1 is found
         # ---------------------------------------
+        IO.inspect("-- a response with a count > 1 is found")
 
         # the response with the highest count is selected
         sort_block_heights = Enum.sort_by(grouped_block_height, &elem(&1, 1), &>=/2)
         {block_height, _count} = List.first(sort_block_heights)
+        IO.inspect(block_height)
 
         # and will be requested and inserted
-        request_and_insert_block_from_server(block_height["server_id"], block_height["index"])
+        # request_and_insert_block_from_server(block_height["server_id"], block_height["index"])
+        :ok
       end
     else
       true ->
@@ -581,6 +595,7 @@ defmodule Kniffel.Blockchain do
 
       {:hash, false} ->
         # TODO: delete last block and mark transactions as not in block
+        get_transaction_ids_for_block(index)
         # insert_block_network(block_params)
         :ok
     end
@@ -590,7 +605,16 @@ defmodule Kniffel.Blockchain do
     Block
     |> where([b], b.index > ^index)
     |> join(:left, [b], t in assoc(b, :transactions))
-    |> select([b, t], t.id)
+    |> select([b, t], [t.id])
+    |> Repo.all()
+    |> IO.inspect()
+  end
+
+  def get_transaction_ids_for_block(index) do
+    Block
+    |> where([b], b.index == ^index)
+    |> join(:left, [b], t in assoc(b, :transactions))
+    |> select([b, t], [t.id])
     |> Repo.all()
     |> IO.inspect()
   end
@@ -626,13 +650,13 @@ defmodule Kniffel.Blockchain do
   end
 
   defp get_highest_and_oldest_block_height(block_height_responses) do
-    sort_block_heights = Enum.sort_by(block_height_responses, & &1["height"], &>=/2)
+    sort_block_heights = Enum.sort_by(block_height_responses, & &1["index"], &>=/2)
     block_height = List.first(sort_block_heights)
 
-    case Enum.count(block_height_responses, &(block_height["height"] == &1["height"])) do
+    case Enum.count(block_height_responses, &(block_height["index"] == &1["index"])) do
       n when n > 1 ->
         same_height_blocks =
-          Enum.filter(block_height_responses, &(&1["height"] == block_height["height"]))
+          Enum.filter(block_height_responses, &(&1["index"] == block_height["index"]))
 
         sort_same_height_blocks = Enum.sort_by(same_height_blocks, & &1["timestamp"])
         List.first(sort_same_height_blocks)

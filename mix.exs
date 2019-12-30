@@ -69,6 +69,7 @@ defmodule Kniffel.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       cleanup: ["run priv/repo/cleanup.exs"],
       test: ["run priv/repo/block_test.exs"],
+      seed: ["run -e \"Kniffel.DBTasks.seed()\" --no-start"],
       "ecto.reset": ["ecto.drop", "ecto.setup"]
       # test: ["ecto.create --quiet", "ecto.migrate", "test"]
     ]

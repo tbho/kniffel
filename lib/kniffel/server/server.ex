@@ -81,8 +81,12 @@ defmodule Kniffel.Server do
   end
 
   defp include_this_server_query(query, false) do
-    this_server = get_this_server()
-    where(query, [s], s.id != ^this_server.id)
+    with %Server{} = this_server <- get_this_server() do
+      where(query, [s], s.id != ^this_server.id)
+    else
+      nil ->
+        query
+    end
   end
 
   defp include_this_server_query(query, true), do: query
