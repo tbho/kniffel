@@ -135,7 +135,6 @@ defmodule Kniffel.Server do
            Kniffel.Request.post(url <> "/api/servers", %{
              server: %{url: Server.get_this_server().url}
            }) do
-
       if server.authority do
         servers = get_authorized_servers(false)
 

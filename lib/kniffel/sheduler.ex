@@ -19,17 +19,17 @@ defmodule Kniffel.Sheduler do
   end
 
   def handle_info(:prepare_node, state) do
-
     Logger.info("-# Prepare and start sheduler")
 
-    with # compare blocks with other servers (get server adress without adding server to network)
-          :ok <- Blockchain.compare_block_height_with_network(),
-          # get the round_specification for next round from master_nodes
-          r when r in [:ok, :default] <- request_round_specification_from_network(),
-          # add server to network
-          :ok <- Server.add_this_server_to_master_server(),
-         %{} = round_specification = get_next_round_specification() do
+    with :ok <- Blockchain.compare_block_height_with_network(),
+         # compare blocks with other servers (get server adress without adding server to network)
+         r when r in [:ok, :default] <- request_round_specification_from_network(),
+         # get the round_specification for next round from master_nodes
+         :ok <- Server.add_this_server_to_master_server(),
+         # add server to network
+         %{} = round_specification <- get_next_round_specification() do
       Kniffel.Cache.set(:round_specification, round_specification)
+
       # calculate diff (in milliseconds) till start of new round
       diff_milliseconds =
         round_specification
