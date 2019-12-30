@@ -39,7 +39,7 @@ defmodule KniffelWeb.BlockController do
 
     json(conn, %{
       height_response: %{
-        height: block.index,
+        index: block.index,
         timestamp: timestamp,
         server_id: server.id,
         hash: block.hash
