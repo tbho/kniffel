@@ -25,7 +25,7 @@ defmodule Kniffel.Sheduler do
          # compare blocks with other servers (get server adress without adding server to network)
          r when r in [:ok, :default] <- request_round_specification_from_network(),
          # get the round_specification for next round from master_nodes
-         #  :ok <- Server.add_this_server_to_master_server(),
+         :ok <- Server.add_this_server_to_master_server(),
          # add server to network
          %{} = round_specification <- get_round_specification() do
       # calculate diff (in milliseconds) till start of new round
@@ -35,7 +35,7 @@ defmodule Kniffel.Sheduler do
         |> calculate_diff_to_now
 
       # shedule new round
-      # Process.send_after(self(), :next_round, diff_milliseconds)
+      Process.send_after(self(), :next_round, diff_milliseconds)
 
       Logger.info(
         "-✓ Started sheduler successful! First round will start at: " <>
