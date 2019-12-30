@@ -566,7 +566,7 @@ defmodule Kniffel.Blockchain do
     server = Server.get_server(server_id)
 
     with {:ok, %{"block" => block_response}} <-
-           Kniffel.Request.get(server.url <> "/api/block/#{block_index}"),
+           Kniffel.Request.get(server.url <> "/api/blocks/#{block_index}"),
          {:ok, _block} <- insert_block_from_network(block_response) do
       :ok
     else
@@ -575,7 +575,9 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  def insert_block_from_network(%{"server_id" => server_id, "index" => index, "hash" => hash}) do
+  def insert_block_from_network(
+        %{"server_id" => server_id, "index" => index, "hash" => hash} = block_params
+      ) do
     %Block{} = last_block = get_last_block()
 
     with {:index, true} <- {:index, last_block.index == index},
@@ -595,8 +597,10 @@ defmodule Kniffel.Blockchain do
 
       {:hash, false} ->
         # TODO: delete last block and mark transactions as not in block
-        get_transaction_ids_for_block(index)
-        # insert_block_network(block_params)
+        transaction_ids = get_transaction_ids_for_block(index)
+        set_transaction_block_index_to_nil(transaction_ids)
+        delete_block(last_block)
+        IO.inspect(insert_block_network(block_params))
         :ok
     end
   end
@@ -613,10 +617,25 @@ defmodule Kniffel.Blockchain do
   def get_transaction_ids_for_block(index) do
     Block
     |> where([b], b.index == ^index)
-    |> join(:left, [b], t in assoc(b, :transactions))
-    |> select([b, t], [t.id])
+    |> join(:inner, [b], t in assoc(b, :transactions))
+    |> select([b, t], t.id)
     |> Repo.all()
     |> IO.inspect()
+  end
+
+  def set_transaction_block_index_to_nil(ids) when is_list(ids) and length(ids) > 0 do
+    query = update(Transaction, [t], set: [block_index: nil])
+
+    ids
+    |> Enum.reduce(query, &or_where(&2, [t], t.index == ^&1))
+    |> Repo.update_all()
+    |> IO.inspect()
+  end
+
+  def set_transaction_block_index_to_nil([]), do: {0, nil}
+
+  def delete_block(block) do
+    Repo.delete(block)
   end
 
   defp insert_block_network(%{"server_id" => server_id, "data" => data} = block_params) do
