@@ -25,7 +25,7 @@ defmodule Kniffel.Sheduler do
          # compare blocks with other servers (get server adress without adding server to network)
          r when r in [:ok, :default] <- request_round_specification_from_network(),
          # get the round_specification for next round from master_nodes
-         #  :ok <- Server.add_this_server_to_master_server(),
+         :ok <- Server.add_this_server_to_master_server(),
          # add server to network
          a when a in [:ok, :default] <- request_server_age_from_network(),
          # get server_age from network
@@ -46,14 +46,14 @@ defmodule Kniffel.Sheduler do
     else
       :error ->
         Logger.error(
-          "Error while preparing to start sheduler (request data from network), repeating in 5 seconds again!"
+          "Error while preparing to start sheduler (request data from network), repeating in 10 seconds again!"
         )
 
         Process.send_after(self(), :prepare_node, 10_000)
 
       {:error, _} ->
         Logger.error(
-          "Error while preparing to start sheduler (no round_specification in cache), repeating in 5 seconds again!"
+          "Error while preparing to start sheduler (no round_specification in cache), repeating in 10 seconds again!"
         )
 
         Process.send_after(self(), :prepare_node, 10_000)

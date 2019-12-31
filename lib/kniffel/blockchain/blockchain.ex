@@ -39,8 +39,7 @@ defmodule Kniffel.Blockchain do
       data:
         Poison.encode!(%{
           "propose_response" => [],
-          "transactions" => [],
-          "round_length" => 30
+          "transactions" => []
         }),
       pre_hash: "ZERO_HASH",
       index: 0,
@@ -224,8 +223,7 @@ defmodule Kniffel.Blockchain do
       data =
         Poison.encode!(%{
           "propose_response" => propose_response,
-          "transactions" => transaction_data,
-          "round_length" => 30
+          "transactions" => transaction_data
         })
 
       block_params = %{

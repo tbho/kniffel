@@ -23,7 +23,7 @@ defmodule KniffelWeb.ShedulerController do
           server_age: %{
             ages: hit.ages,
             checked_at_block: hit.checked_at_block,
-            offsets: hit.offset
+            offsets: hit.offsets
           }
         })
     end
