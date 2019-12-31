@@ -444,7 +444,7 @@ defmodule Kniffel.Sheduler do
       }) do
     with %Server{authority: true} <- Server.get_server(server_id) do
       case reason do
-        :no_transaction ->
+        "no_transaction" ->
           # validate there a no transactions with timestamp before propose_start
           # Kniffel.Blockchain.validate_no_transaction()
           # cancel timers and wait for next round
@@ -461,7 +461,7 @@ defmodule Kniffel.Sheduler do
 
           :ok
 
-        :timeout ->
+        "timeout" ->
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
                true = incoming_round_number == round_number,
@@ -499,7 +499,7 @@ defmodule Kniffel.Sheduler do
             false -> :error
           end
 
-        :not_valid ->
+        "not_valid" ->
           # cancel timers and wait for next round
           Enum.map(
             [
@@ -527,7 +527,7 @@ defmodule Kniffel.Sheduler do
       }) do
     with %Server{authority: true} <- Server.get_server(server_id) do
       case reason do
-        :timeout ->
+        "timeout" ->
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
                true = incoming_round_number == round_number,
@@ -567,7 +567,7 @@ defmodule Kniffel.Sheduler do
 
           :ok
 
-        :not_valid ->
+        "not_valid" ->
           # cancel timers and wait for next round
           :ok
       end
