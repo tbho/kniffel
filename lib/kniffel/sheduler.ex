@@ -508,7 +508,7 @@ defmodule Kniffel.Sheduler do
 
   def handle_cancel_block_commit(%{
         "server_id" => server_id,
-        "round_number" => _round_number,
+        "round_number" => incoming_round_number,
         "reason" => reason
       }) do
     with %Server{authority: true} <- Server.get_server(server_id) do
