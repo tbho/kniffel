@@ -291,6 +291,13 @@ defmodule Kniffel.Sheduler do
       Enum.map(servers, fn server ->
         with {:ok, %{"server_age" => server_age}} <-
                Kniffel.Request.get(server.url <> "/api/sheduler/server_age") do
+          ages = Enum.map(server_age["ages"], fn {server_id, age} -> {server_id, age} end)
+
+          offsets =
+            Enum.map(server_age["offsets"], fn {server_id, offset} -> {server_id, offset} end)
+
+          %{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}
+
           server_age
         else
           {:error, _error} ->

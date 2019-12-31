@@ -21,9 +21,9 @@ defmodule KniffelWeb.ShedulerController do
       hit ->
         json(conn, %{
           server_age: %{
-            ages: hit.ages,
+            ages: Enum.reduce(hit.ages, %{}, &Map.put(&2, elem(&1, 0), elem(&1, 1))),
             checked_at_block: hit.checked_at_block,
-            offsets: hit.offsets
+            offsets: Enum.reduce(hit.offsets, %{}, &Map.put(&2, elem(&1, 0), elem(&1, 1)))
           }
         })
     end
