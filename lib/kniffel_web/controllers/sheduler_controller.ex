@@ -19,7 +19,13 @@ defmodule KniffelWeb.ShedulerController do
         json(conn, %{error: :not_found})
 
       hit ->
-        json(conn, %{server_age: hit})
+        json(conn, %{
+          server_age: %{
+            ages: hit.ages,
+            checked_at_block: hit.checked_at_block,
+            offsets: hit.offset
+          }
+        })
     end
   end
 

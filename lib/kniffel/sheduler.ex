@@ -25,9 +25,10 @@ defmodule Kniffel.Sheduler do
          # compare blocks with other servers (get server adress without adding server to network)
          r when r in [:ok, :default] <- request_round_specification_from_network(),
          # get the round_specification for next round from master_nodes
-         a when a in [:ok, :default] <- request_server_age_from_network(),
          #  :ok <- Server.add_this_server_to_master_server(),
          # add server to network
+         a when a in [:ok, :default] <- request_server_age_from_network(),
+         # get server_age from network
          %{} = round_specification <- get_round_specification() do
       # calculate diff (in milliseconds) till start of new round
       diff_milliseconds =
@@ -269,6 +270,7 @@ defmodule Kniffel.Sheduler do
            end),
          sort_specs <- Enum.sort_by(grouped_specs, &elem(&1, 1), &>=/2) do
       {round_specification, _count} = List.first(sort_specs)
+
       if round_specification do
         Kniffel.Cache.set(:round_specification, round_specification)
         :ok
