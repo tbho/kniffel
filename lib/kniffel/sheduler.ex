@@ -5,7 +5,7 @@ defmodule Kniffel.Sheduler do
   @round_offset 2
 
   use GenServer
-  alias Kniffel.{Server, Blockchain, Blockchain.Crypto}
+  alias Kniffel.{Server, Blockchain, Blockchain.Crypto, Blockchain.Block.ServerAge}
   alias DateTime
   require Logger
 
@@ -25,7 +25,7 @@ defmodule Kniffel.Sheduler do
          # compare blocks with other servers (get server adress without adding server to network)
          r when r in [:ok, :default] <- request_round_specification_from_network(),
          # get the round_specification for next round from master_nodes
-         :ok <- Server.add_this_server_to_master_server(),
+         #  :ok <- Server.add_this_server_to_master_server(),
          # add server to network
          %{} = round_specification <- get_round_specification() do
       # calculate diff (in milliseconds) till start of new round
@@ -73,7 +73,7 @@ defmodule Kniffel.Sheduler do
 
       # if this server is oldest he is choosen for block creation
       # if not he is choosen to abort if lead server runs in a timeout
-      case Kniffel.Blockchain.is_leader?(server) do
+      case ServerAge.is_leader?(server) do
         true ->
           round_specification
           |> schedule(:propose_block)
@@ -83,8 +83,8 @@ defmodule Kniffel.Sheduler do
         false ->
           # position = Kniffel.Blockchain.get_position_in_server_queue(server)
           round_specification
-          |> schedule(:cancel_block_propose)
-          |> schedule(:cancel_block_commit)
+          # |> schedule(:cancel_block_propose)
+          # |> schedule(:cancel_block_commit)
       end
     else
       Logger.info("--- No other master node found! I will shedule a new round and try again.")
@@ -318,19 +318,10 @@ defmodule Kniffel.Sheduler do
 
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
-        {:ok, response} =
-          HTTPoison.post(
-            server.url <> "/api/sheduler/cancel_block_propose",
-            Poison.encode!(%{cancel_block_propose: Map.put(data, :signature, signature)}),
-            [
-              {"Content-Type", "application/json"}
-            ]
-          )
-
-        with %{"cancel_block_propose_response" => cancel_block_propose_response} <-
-               Poison.decode!(response.body) do
-          :ok = cancel_block_propose_response
-        end
+        {:ok, %{"cancel_block_propose_response" => :ok}} =
+          Kniffel.Request.post(server.url <> "/api/sheduler/cancel_block_propose", %{
+            cancel_block_propose: Map.put(data, :signature, signature)
+          })
       end)
     end
   end
@@ -354,7 +345,7 @@ defmodule Kniffel.Sheduler do
 
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
-        {:ok, %{"cancel_block_propose_response" => :ok}} =
+        {:ok, %{"cancel_block_commit_response" => :ok}} =
           Kniffel.Request.post(server.url <> "/api/sheduler/cancel_block_commit", %{
             cancel_block_commit: Map.put(data, :signature, signature)
           })

@@ -11,6 +11,7 @@ defmodule Kniffel.Blockchain do
     Block,
     Block.Propose,
     Block.ServerResponse,
+    Block.ServerAge,
     Transaction
   }
 
@@ -18,8 +19,6 @@ defmodule Kniffel.Blockchain do
 
   @block_transaction_limit 10
   @active_server_treshhold 10
-
-  @age_calculation_select_limit 10
 
   # -----------------------------------------------------------------
   # -- Block
@@ -38,7 +37,11 @@ defmodule Kniffel.Blockchain do
   def genesis() do
     block_params = %{
       data:
-        Poison.encode!(%{"propose_response" => [], "transactions" => [], "round_length" => 30}),
+        Poison.encode!(%{
+          "propose_response" => [],
+          "transactions" => [],
+          "round_length" => 30
+        }),
       pre_hash: "ZERO_HASH",
       index: 0,
       transactions: []
@@ -221,7 +224,8 @@ defmodule Kniffel.Blockchain do
       data =
         Poison.encode!(%{
           "propose_response" => propose_response,
-          "transactions" => transaction_data
+          "transactions" => transaction_data,
+          "round_length" => 30
         })
 
       block_params = %{
@@ -409,7 +413,7 @@ defmodule Kniffel.Blockchain do
         "index" => index
       }) do
     with %Server{authority: true} = server <- Server.get_server(server_id),
-         {:leader, true} <- {:leader, is_leader?(server)},
+         {:leader, true} <- {:leader, ServerAge.is_leader?(server)},
          {:block, %Block{} = last_block} = {:block, get_last_block()},
          true = index == last_block.index,
          true = hash == last_block.hash do
@@ -486,15 +490,14 @@ defmodule Kniffel.Blockchain do
             # if this index is higher, block is spread to network, otherwise block is requested
             if last_block.index > block_height["index"] do
               IO.inspect("this block index is HIGHER! than network")
-              # send_block_to_server(block_height["server_id"], last_block)
-              :ok
+              send_block_to_server(block_height["server_id"], last_block)
             else
               IO.inspect("this block index is LOWER! than network")
-              # request_and_insert_block_from_server(
-              #   block_height["server_id"],
-              #   block_height["index"]
-              # )
-              :ok
+
+              request_and_insert_block_from_server(
+                block_height["server_id"],
+                block_height["index"]
+              )
             end
 
           {:hash, false} ->
@@ -502,9 +505,10 @@ defmodule Kniffel.Blockchain do
             # if this timestamp is older, block is spread to network, otherwise block is requested
             if last_block.timestamp < block_height["timestamp"] do
               IO.inspect("this block timestamp is OLDER! than network")
-              # send_block_to_server(block_height["server_id"], last_block)
-              :ok
+              send_block_to_server(block_height["server_id"], last_block)
             else
+              IO.inspect("this block timestamp is HIGHER! than network")
+
               request_and_insert_block_from_server(
                 block_height["server_id"],
                 block_height["index"]
@@ -523,7 +527,7 @@ defmodule Kniffel.Blockchain do
         IO.inspect(block_height)
 
         # and will be requested and inserted
-        # request_and_insert_block_from_server(block_height["server_id"], block_height["index"])
+        request_and_insert_block_from_server(block_height["server_id"], block_height["index"])
         :ok
       end
     else
@@ -585,57 +589,51 @@ defmodule Kniffel.Blockchain do
       :ok
     else
       {:index, false} ->
-        # if last_block is higher
         if last_block.index > index do
-          delete_all_blocks_with_higher_index(index)
-          # insert_block_network(block_params)
-          :ok
+          # if last_block is higher delete blocks with higher index and
+          # mark all transactions as not in block
+          set_transaction_ids_to_nil_for_blocks_with_higher_index(index)
+          delete_block_with_higher_index(index)
+
+          insert_block_from_network(block_params)
         else
-          request_and_insert_block_from_server(server_id, last_block.index)
+          insert_block_from_network(block_params)
           request_and_insert_block_from_server(server_id, last_block.index + 1)
         end
 
       {:hash, false} ->
-        # TODO: delete last block and mark transactions as not in block
-        transaction_ids = get_transaction_ids_for_block(index)
-        set_transaction_block_index_to_nil(transaction_ids)
+        # delete last block and mark transactions as not in block
+        set_transaction_ids_to_nil_for_block(index) |> IO.inspect()
         delete_block(last_block)
-        IO.inspect(insert_block_network(block_params))
-        :ok
+
+        # insert new block
+        insert_block_network(block_params)
     end
   end
 
-  def delete_all_blocks_with_higher_index(index) do
-    Block
-    |> where([b], b.index > ^index)
-    |> join(:left, [b], t in assoc(b, :transactions))
-    |> select([b, t], [t.id])
-    |> Repo.all()
-    |> IO.inspect()
+  def set_transaction_ids_to_nil_for_blocks_with_higher_index(index) do
+    transaction_id_query()
+    |> where([t, b], b.index > ^index)
+    |> update_transaction_ids()
   end
 
-  def get_transaction_ids_for_block(index) do
-    Block
-    |> where([b], b.index == ^index)
-    |> join(:inner, [b], t in assoc(b, :transactions))
-    |> select([b, t], t.id)
-    |> Repo.all()
-    |> IO.inspect()
+  def set_transaction_ids_to_nil_for_block(index) do
+    transaction_id_query()
+    |> where([t, b], b.index == ^index)
+    |> update_transaction_ids()
   end
 
-  def set_transaction_block_index_to_nil(ids) when is_list(ids) and length(ids) > 0 do
-    query = update(Transaction, [t], set: [block_index: nil])
-
-    ids
-    |> Enum.reduce(query, &or_where(&2, [t], t.index == ^&1))
-    |> Repo.update_all()
-    |> IO.inspect()
-  end
-
-  def set_transaction_block_index_to_nil([]), do: {0, nil}
+  defp transaction_id_query(), do: join(Transaction, :inner, [t], b in assoc(t, :block))
+  defp update_transaction_ids(query), do: Repo.update_all(query, set: [block_index: nil])
 
   def delete_block(block) do
     Repo.delete(block)
+  end
+
+  def delete_block_with_higher_index(index) when not is_nil(index) do
+    Block
+    |> where([b], b.index > ^index)
+    |> Repo.delete_all()
   end
 
   defp insert_block_network(%{"server_id" => server_id, "data" => data} = block_params) do
@@ -682,76 +680,6 @@ defmodule Kniffel.Blockchain do
 
       1 ->
         block_height
-    end
-  end
-
-  def is_leader?(server) do
-    1 == get_position_in_server_queue(server)
-  end
-
-  def get_position_in_server_queue(server) do
-    with server_queue when not is_nil(server_queue) <- calculate_ages_of_servers(),
-         server_queue <- Enum.sort_by(server_queue, &elem(&1, 1), &>=/2) do
-      {position, _changed} =
-        Enum.reduce(server_queue, {1, false}, fn
-          _position_result, {position, true} ->
-            {position, true}
-
-          position_result, {position, false} ->
-            if server.id == elem(position_result, 0) do
-              {position, true}
-            else
-              {position + 1, false}
-            end
-        end)
-
-      position
-    end
-  end
-
-  def calculate_ages_of_servers(refresh_list \\ false) do
-    cache_result = Kniffel.Cache.get(:server_ages)
-
-    if refresh_list || is_nil(cache_result) do
-      servers = Server.get_authorized_servers()
-      server_ages = calculate_ages_of_servers(0, @age_calculation_select_limit, servers)
-      Kniffel.Cache.set(:server_ages, server_ages)
-      server_ages
-    else
-      cache_result
-    end
-  end
-
-  def calculate_ages_of_servers(offset, limit, servers, result \\ %{}) do
-    blocks =
-      Block
-      |> order_by(desc: :index)
-      |> limit(^limit)
-      |> offset(^offset)
-      |> Repo.all()
-
-    {result, offset} =
-      Enum.reduce(blocks, {result, offset}, fn block, {result, offset} ->
-        {Map.put_new(result, block.server_id, offset), offset + 1}
-      end)
-
-    cond do
-      Enum.all?(servers, fn server -> Map.get(result, server.id) != nil end) ->
-        result
-
-      length(blocks) < limit ->
-        Enum.reduce(servers, result, fn server, result ->
-          case Map.get(result, server.id) do
-            nil ->
-              Map.put_new(result, server.id, 0)
-
-            _other ->
-              result
-          end
-        end)
-
-      true ->
-        calculate_ages_of_servers(offset, limit, servers, result)
     end
   end
 
