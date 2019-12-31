@@ -544,7 +544,7 @@ defmodule Kniffel.Blockchain do
            {:ok, timestamp} <- Timex.parse(height_response["timestamp"], "{ISO:Extended}") do
         Map.put(height_response, "timestamp", timestamp)
       else
-        %{"error" => _error} ->
+        {:error, _error} ->
           nil
       end
     end)
@@ -572,7 +572,7 @@ defmodule Kniffel.Blockchain do
          {:ok, _block} <- insert_block_from_network(block_response) do
       :ok
     else
-      %{"error" => _error} ->
+      {:error, _error} ->
         :error
     end
   end
