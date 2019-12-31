@@ -17,6 +17,8 @@ defmodule Kniffel.Blockchain do
 
   alias Kniffel.{Game, Game.Score, User, Server}
 
+  require Logger
+
   @block_transaction_limit 10
   @active_server_treshhold 10
 
@@ -538,14 +540,15 @@ defmodule Kniffel.Blockchain do
   defp get_heigt_from_network() do
     servers = Server.get_authorized_servers(false)
 
-    Enum.map(servers, fn server ->
+    Enum.reduce(servers, [], fn server, result ->
       with {:ok, %{"height_response" => height_response}} <-
              Kniffel.Request.get(server.url <> "/api/blocks/height"),
            {:ok, timestamp} <- Timex.parse(height_response["timestamp"], "{ISO:Extended}") do
-        Map.put(height_response, "timestamp", timestamp)
+        result ++ [Map.put(height_response, "timestamp", timestamp)]
       else
-        {:error, _error} ->
-          nil
+        {:error, error} ->
+          Logger.debug(error)
+          result
       end
     end)
   end

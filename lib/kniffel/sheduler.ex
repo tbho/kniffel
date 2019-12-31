@@ -52,7 +52,9 @@ defmodule Kniffel.Sheduler do
 
         Process.send_after(self(), :prepare_node, 10_000)
 
-      {:error, _} ->
+      {:error, error} ->
+        Logger.debug(error)
+
         Logger.error(
           "Error while preparing to start sheduler (no round_specification in cache), repeating in 10 seconds again!"
         )
@@ -253,30 +255,36 @@ defmodule Kniffel.Sheduler do
     servers = Server.get_authorized_servers(false)
 
     round_specification_responses =
-      Enum.map(servers, fn server ->
+      Enum.reduce(servers, [], fn server, result ->
         with {:ok, %{"round_response" => round_response}} <-
                Kniffel.Request.get(server.url <> "/api/sheduler/next_round") do
           {:ok, round_begin} = Timex.parse(round_response["round_begin"], "{ISO:Extended}")
 
           case Timex.compare(Timex.now(), round_begin) do
             -1 ->
-              %{
-                round_length: round_response["round_length"],
-                round_begin: round_begin,
-                round_number: round_response["round_number"]
-              }
+              result ++
+                [
+                  %{
+                    round_length: round_response["round_length"],
+                    round_begin: round_begin,
+                    round_number: round_response["round_number"]
+                  }
+                ]
 
             0 ->
-              nil
+              result
 
             1 ->
-              nil
+              result
           end
         else
-          {:ok, %{"error" => _error}} ->
-            nil
-          {:error, _error} ->
-            nil
+          {:ok, %{"error" => error}} ->
+            Logger.error(error)
+            result
+
+          {:error, error} ->
+            Logger.error(error)
+            result
         end
       end)
 
@@ -309,7 +317,7 @@ defmodule Kniffel.Sheduler do
     servers = Server.get_authorized_servers(false)
 
     server_age_responses =
-      Enum.map(servers, fn server ->
+      Enum.reduce(servers, [], fn server, result ->
         with {:ok, %{"server_age" => server_age}} <-
                Kniffel.Request.get(server.url <> "/api/sheduler/server_age") do
           ages = Enum.map(server_age["ages"], fn {server_id, age} -> {server_id, age} end)
@@ -317,12 +325,14 @@ defmodule Kniffel.Sheduler do
           offsets =
             Enum.map(server_age["offsets"], fn {server_id, offset} -> {server_id, offset} end)
 
-          %{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}
+          result ++
+            [%{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}]
         else
           {:ok, %{"error" => _error}} ->
-            nil
+            result
+
           {:error, _error} ->
-            nil
+            result
         end
       end)
 
