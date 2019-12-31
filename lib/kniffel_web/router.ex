@@ -55,6 +55,7 @@ defmodule KniffelWeb.Router do
     pipe_through :api
 
     get "/sheduler/next_round", ShedulerController, :next_round
+    get "/sheduler/server_age", ShedulerController, :server_age
     post "/sheduler/cancel_block_propose", ShedulerController, :cancel_block_propose
     post "/sheduler/cancel_block_commit", ShedulerController, :cancel_block_commit
 

@@ -13,6 +13,16 @@ defmodule KniffelWeb.ShedulerController do
     end
   end
 
+  def server_age(conn, _attrs) do
+    case Kniffel.Cache.get(:server_age) do
+      nil ->
+        json(conn, %{error: :not_found})
+
+      hit ->
+        json(conn, %{server_age: hit})
+    end
+  end
+
   def cancel_block_propose(conn, %{"cancel_block_propose" => params}) do
     case Sheduler.handle_cancel_block_propose(params) do
       :ok ->

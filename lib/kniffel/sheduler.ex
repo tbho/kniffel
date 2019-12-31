@@ -25,6 +25,7 @@ defmodule Kniffel.Sheduler do
          # compare blocks with other servers (get server adress without adding server to network)
          r when r in [:ok, :default] <- request_round_specification_from_network(),
          # get the round_specification for next round from master_nodes
+         a when a in [:ok, :default] <- request_server_age_from_network(),
          #  :ok <- Server.add_this_server_to_master_server(),
          # add server to network
          %{} = round_specification <- get_round_specification() do
@@ -253,7 +254,7 @@ defmodule Kniffel.Sheduler do
             round_number: round_response["round_number"]
           }
         else
-          %{"error" => _error} ->
+          {:error, _error} ->
             nil
         end
       end)
@@ -268,11 +269,53 @@ defmodule Kniffel.Sheduler do
            end),
          sort_specs <- Enum.sort_by(grouped_specs, &elem(&1, 1), &>=/2) do
       {round_specification, _count} = List.first(sort_specs)
-      Kniffel.Cache.set(:round_specification, round_specification)
-      :ok
+      if round_specification do
+        Kniffel.Cache.set(:round_specification, round_specification)
+        :ok
+      else
+        :error
+      end
     else
       true ->
         Kniffel.Cache.set(:round_specification, get_default_round_specification())
+        :default
+    end
+  end
+
+  def request_server_age_from_network() do
+    servers = Server.get_authorized_servers(false)
+
+    server_age_responses =
+      Enum.map(servers, fn server ->
+        with {:ok, %{"server_age" => server_age}} <-
+               Kniffel.Request.get(server.url <> "/api/sheduler/server_age") do
+          server_age
+        else
+          {:error, _error} ->
+            nil
+        end
+      end)
+
+    # if no server is in network empty list is returned
+    # otherwise answers will be grouped and answer with highest count is choosen
+    with false <- Enum.empty?(server_age_responses),
+         unique_ages <- Enum.uniq(server_age_responses),
+         grouped_ages <-
+           Enum.map(unique_ages, fn unique_age ->
+             {unique_age, Enum.count(server_age_responses, &(unique_age == &1))}
+           end),
+         sort_ages <- Enum.sort_by(grouped_ages, &elem(&1, 1), &>=/2) do
+      {server_age, _count} = List.first(sort_ages)
+
+      if server_age do
+        Kniffel.Cache.set(:server_age, server_age)
+        :ok
+      else
+        :error
+      end
+    else
+      true ->
+        ServerAge.get_server_age()
         :default
     end
   end

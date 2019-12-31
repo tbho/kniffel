@@ -70,12 +70,17 @@ defmodule Kniffel.Blockchain.Block.ServerAge do
       |> where([b], b.index > ^server_age.checked_at_block)
       |> Repo.all()
 
-    shift_server_ages(server_age, length(blocks))
+    shift_server_ages(server_age, 0 - length(Enum.uniq_by(blocks, & &1.server_id)))
 
     Enum.reduce(blocks, {server_age, 0}, fn block, {server_age, offset} ->
       List.delete(server_age, get_entry_by_server_id(server_age, block.server_id))
       {%{server_age | ages: server_age.ages ++ {block.server_id, offset}}, offset + 1}
     end)
+
+    servers = Server.get_authorized_servers()
+    server_age = add_server_ages_not_in_blockchain(servers, server_age)
+    last_block = Kniffel.Blockchain.get_last_block()
+    %{server_age | checked_at_block: last_block.index}
   end
 
   defp add_server_ages_not_in_blockchain(servers, result \\ %ServerAge{}) do
