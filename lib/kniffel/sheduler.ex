@@ -273,6 +273,8 @@ defmodule Kniffel.Sheduler do
               nil
           end
         else
+          {:ok, %{"error" => _error}} ->
+            nil
           {:error, _error} ->
             nil
         end
@@ -317,6 +319,8 @@ defmodule Kniffel.Sheduler do
 
           %{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}
         else
+          {:ok, %{"error" => _error}} ->
+            nil
           {:error, _error} ->
             nil
         end
