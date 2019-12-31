@@ -23,7 +23,8 @@ defmodule Kniffel.Sheduler do
 
     with :ok <- Blockchain.compare_block_height_with_network(),
          # compare blocks with other servers (get server adress without adding server to network)
-         r when r in [:ok, :default] <- request_round_specification_from_network(),
+         r when r in [:ok, :default] <-
+           request_round_specification_from_network(),
          # get the round_specification for next round from master_nodes
          :ok <- Server.add_this_server_to_master_server(),
          # add server to network
@@ -85,8 +86,8 @@ defmodule Kniffel.Sheduler do
         false ->
           # position = Kniffel.Blockchain.get_position_in_server_queue(server)
           round_specification
-          # |> schedule(:cancel_block_propose)
-          # |> schedule(:cancel_block_commit)
+          |> schedule(:cancel_block_propose)
+          |> schedule(:cancel_block_commit)
       end
     else
       Logger.info("--- No other master node found! I will shedule a new round and try again.")
@@ -105,6 +106,8 @@ defmodule Kniffel.Sheduler do
   end
 
   def handle_info(:propose_block, state) do
+    Logger.info("--- Propose a new block")
+
     case Kniffel.Blockchain.propose_new_block() do
       {:ok, _propose} ->
         :ok
@@ -117,6 +120,8 @@ defmodule Kniffel.Sheduler do
   end
 
   def handle_info(:commit_block, state) do
+    Logger.info("--- Commit a new block")
+
     case Kniffel.Blockchain.commit_new_block() do
       {:ok, _block} ->
         :ok
@@ -129,16 +134,19 @@ defmodule Kniffel.Sheduler do
   end
 
   def handle_info(:finalize_block, state) do
+    Logger.info("--- Finalize new block")
     Kniffel.Blockchain.finalize_block()
     {:noreply, state}
   end
 
   def handle_info(:cancel_block_propose, state) do
+    Logger.info("--- Cancel block propose (timeout)")
     cancel_block_propose(:timeout)
     {:noreply, state}
   end
 
   def handle_info(:cancel_block_commit, state) do
+    Logger.info("--- Cancel block commit (timeout)")
     cancel_block_commit(:timeout)
     {:noreply, state}
   end
@@ -247,13 +255,23 @@ defmodule Kniffel.Sheduler do
     round_specification_responses =
       Enum.map(servers, fn server ->
         with {:ok, %{"round_response" => round_response}} <-
-               Kniffel.Request.get(server.url <> "/api/sheduler/next_round"),
-             {:ok, round_begin} <- Timex.parse(round_response["round_begin"], "{ISO:Extended}") do
-          %{
-            round_length: round_response["round_length"],
-            round_begin: round_begin,
-            round_number: round_response["round_number"]
-          }
+               Kniffel.Request.get(server.url <> "/api/sheduler/next_round") do
+          {:ok, round_begin} = Timex.parse(round_response["round_begin"], "{ISO:Extended}")
+
+          case Timex.compare(Timex.now(), round_begin) do
+            -1 ->
+              %{
+                round_length: round_response["round_length"],
+                round_begin: round_begin,
+                round_number: round_response["round_number"]
+              }
+
+            0 ->
+              nil
+
+            1 ->
+              nil
+          end
         else
           {:error, _error} ->
             nil
@@ -275,7 +293,8 @@ defmodule Kniffel.Sheduler do
         Kniffel.Cache.set(:round_specification, round_specification)
         :ok
       else
-        :error
+        Kniffel.Cache.set(:round_specification, get_default_round_specification())
+        :default
       end
     else
       true ->
@@ -297,8 +316,6 @@ defmodule Kniffel.Sheduler do
             Enum.map(server_age["offsets"], fn {server_id, offset} -> {server_id, offset} end)
 
           %{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}
-
-          server_age
         else
           {:error, _error} ->
             nil
@@ -320,7 +337,8 @@ defmodule Kniffel.Sheduler do
         Kniffel.Cache.set(:server_age, server_age)
         :ok
       else
-        :error
+        ServerAge.get_server_age()
+        :default
       end
     else
       true ->
@@ -407,7 +425,7 @@ defmodule Kniffel.Sheduler do
 
   def handle_cancel_block_propose(%{
         "server_id" => server_id,
-        "round_number" => _round_number,
+        "round_number" => incoming_round_number,
         "reason" => reason
       }) do
     with %Server{authority: true} <- Server.get_server(server_id) do
@@ -431,8 +449,41 @@ defmodule Kniffel.Sheduler do
 
         :timeout ->
           # compare DateTime.now() to round_times
-          %{round_begin: _round_begin, round_length: _round_length} = get_round_specification()
-          :ok
+          with %{round_number: round_number} = round_specification <- get_round_specification(),
+               true = incoming_round_number == round_number,
+               cancel_time <- get_round_time(round_specification, :cancel_block_propose),
+               1 <- Timex.compate(Timex.now(), cancel_time) do
+            Enum.map(
+              [
+                :propose_block,
+                :create_block,
+                :finalize_block,
+                :cancel_block_propose,
+                :cancel_block_commit
+              ],
+              &cancel_timer(&1)
+            )
+
+            Logger.info(
+              "--- Recieved cancel block propose request! Reason: " <> Atom.to_string(reason)
+            )
+
+            # if no other server in network save new round specification
+            next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
+            # schedule the new round
+            schedule(round_specification, :next_round)
+
+            Logger.info(
+              "-! Round canceled. Next Round will start at: " <>
+                Timex.format!(next_round.round_begin, "{ISO:Extended}")
+            )
+
+            :ok
+          else
+            0 -> :error
+            -1 -> :error
+            false -> :error
+          end
 
         :not_valid ->
           # cancel timers and wait for next round
@@ -463,9 +514,43 @@ defmodule Kniffel.Sheduler do
     with %Server{authority: true} <- Server.get_server(server_id) do
       case reason do
         :timeout ->
-          # get_round_times(round_number)
-
           # compare DateTime.now() to round_times
+          with %{round_number: round_number} = round_specification <- get_round_specification(),
+               true = incoming_round_number == round_number,
+               cancel_time <- get_round_time(round_specification, :cancel_block_commit),
+               1 <- Timex.compate(Timex.now(), cancel_time) do
+            Enum.map(
+              [
+                :propose_block,
+                :create_block,
+                :finalize_block,
+                :cancel_block_propose,
+                :cancel_block_commit
+              ],
+              &cancel_timer(&1)
+            )
+
+            Logger.info(
+              "--- Recieved cancel block propose request! Reason: " <> Atom.to_string(reason)
+            )
+
+            # if no other server in network save new round specification
+            next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
+            # schedule the new round
+            schedule(round_specification, :next_round)
+
+            Logger.info(
+              "-! Round canceled. Next Round will start at: " <>
+                Timex.format!(next_round.round_begin, "{ISO:Extended}")
+            )
+
+            :ok
+          else
+            0 -> :error
+            -1 -> :error
+            false -> :error
+          end
+
           :ok
 
         :not_valid ->

@@ -56,6 +56,8 @@ case Server.get_server_by_url(url) do
         )
 
       {:error, message} ->
+        Logger.debug(message)
+
         raise(
           "Master-node " <>
             url <> " could not be reached! Please control connection or if master-node is up."
