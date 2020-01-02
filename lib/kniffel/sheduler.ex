@@ -81,7 +81,7 @@ defmodule Kniffel.Sheduler do
       # if not he is choosen to abort if lead server runs in a timeout
       case ServerAge.is_leader?(server) do
         true ->
-          Logger.debug("--- Server is leader. Round number: #{inspect(round_specification["round_number"])}")
+          Logger.debug("--- Server is leader. Round number: #{inspect(round_specification.round_number)}")
           round_specification
           |> schedule(:propose_block)
           |> schedule(:commit_block)
@@ -89,7 +89,7 @@ defmodule Kniffel.Sheduler do
 
         false ->
           # position = Kniffel.Blockchain.get_position_in_server_queue(server)
-          Logger.debug("--- Server is canceler. Round number: #{inspect(round_specification["round_number"])}")
+          Logger.debug("--- Server is canceler. Round number: #{inspect(round_specification.round_number)}")
           round_specification
           |> schedule(:cancel_block_propose)
           |> schedule(:cancel_block_commit)
