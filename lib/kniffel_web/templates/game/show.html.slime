@@ -6,6 +6,12 @@ div.level
     span = gettext("Back")
 div.level
   h2.title.is-2 = @game.id
+  div.level-right
+    = if show_roll_button?(@game.id, Plug.Conn.get_session(@conn, :user_id)) do
+      a.button.is-medium.is-primary(href="#{game_score_path(@conn, :new, @game.id)}")
+        span.icon
+          i.fas.fa-plus-square
+        span = gettext("Roll the dices")
 
 = if length(@game.users) > 0 do
   div.box
@@ -14,45 +20,41 @@ div.level
         thead
           th score_type
           = for user <- @game.users do
-            th = user.id
+            th = String.slice(user.id, 0, 7)
         tbody
-          = for type <- [:aces, :twos, :threes, :fours, :fives, :sixes] do
-            tr
+          = for type <- [:aces, :twos, :threes, :fours, :fives, :sixes, :sum_up, :bonus, :sum_bonus, :three_of_a_kind, :four_of_a_kind, :full_house, :small_straight, :large_straight, :kniffel, :chance, :sum_bonus, :sum_down, :sum_complete] do
+            tr(class="#{if type in [:sum_up, :bonus, :sum_bonus,:sum_down, :sum_complete], do: "is-selected", else: ""}")
               td = type
               = for user <- @game.users do
                 td
-                  - score = display_score(@scores, user.id, type)
-                  = if score do
-                    = render("dice.html", dices: get_rolls_to_show(score))
+                  - user_scores = Map.get(@scores, user.id)
+                  - type_score = Map.get(user_scores, type)
+                  = if type_score do
+                    = render("dice.html", type_score)
                   - else
                     p No score yet!
-          tr.is-selected
-            td sum
-          tr.is-selected
-            td bonus
-          tr.is-selected
-            td sum_bonus
-          = for type <- [:three_of_a_kind, :four_of_a_ind, :full_house, :small_straight, :large_straight, :kniffel, :chance] do
-            tr
-              td = type
-              = for user <- @game.users do
-                td
-                  - score = display_score(@scores, user.id, type)
-                  = if score do
-                    = render("dice.html", dices: get_rolls_to_show(score))
-                  - else
-                    p No score yet!
-          tr.is-selected
-            td sum_up
-          tr.is-selected
-            td sum_down
-          tr.is-selected
-            td sum_complete
-
-
+          / = for type <- [] do
+          /   tr
+          /     td = type
+          /     = for user <- @game.users do
+          /       td
+          /         - score = score_exists?(@scores, user.id, type)
+          /         = if score do
+          /           - dices = get_rolls_to_show(score)
+          /           - {location, dices} = Map.pop(dices, "location")
+          /           - points = calculate_score(dices, type)
+          /           = render("dice.html", dices: dices, points: points, location: location)
+          /         - else
+          /           p No score yet!
 
 - else
   div.box
     span.icon
       i.fas.fa-exclamation
     span =gettext("No users found.")
+
+div.box
+  h4.title.is-4 Legend
+  span.tag.is-success Saved in blockchain
+  span.tag.is-warning Saved in transaction
+  span.tag.is-danger Saved on local server

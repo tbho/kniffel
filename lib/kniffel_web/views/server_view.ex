@@ -10,6 +10,6 @@ defmodule KniffelWeb.ServerView do
   end
 
   def render("server.json", %{server: server}) do
-    %{id: server.id, url: server.url, public_key: server.public_key}
+    %{id: server.id, url: server.url, public_key: server.public_key, authority: server.authority}
   end
 end

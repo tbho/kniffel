@@ -11,12 +11,12 @@ defmodule Kniffel.Blockchain.Block do
   @hash_fields [:server_id, :timestamp, :signature, :proof | @sign_fields]
 
   @primary_key {:index, :id, autogenerate: false}
-  @foreign_key_type :index
+  @foreign_key_type :id
 
   schema "block" do
     field :pre_hash, :string
     field :proof, :integer, default: 1
-    field :timestamp, :utc_datetime, default: DateTime.truncate(DateTime.utc_now(), :second)
+    field :timestamp, :string, default: Timex.now() |> Timex.format!("{ISO:Extended}")
     field :hash, :string
     field :signature, :string
     field :data, :string
@@ -87,7 +87,7 @@ defmodule Kniffel.Blockchain.Block do
     changeset =
       changeset
       |> put_change(:proof, proof + 1)
-      |> put_change(:timestamp, DateTime.truncate(DateTime.utc_now(), :second))
+      |> put_change(:timestamp, Timex.now() |> Timex.format!("{ISO:Extended}"))
 
     changeset
     |> take(@hash_fields)
@@ -150,6 +150,19 @@ defmodule Kniffel.Blockchain.Block do
       proof: block.proof,
       data: Poison.decode!(block.data),
       # data: %{"transactions" => transaction_data},
+      hash: block.hash,
+      signature: block.signature,
+      timestamp: block.timestamp,
+      server_id: block.server_id
+    }
+  end
+
+  def json_encode(%Kniffel.Blockchain.Block{} = block) do
+    %{
+      index: block.index,
+      pre_hash: block.pre_hash,
+      proof: block.proof,
+      data: block.data,
       hash: block.hash,
       signature: block.signature,
       timestamp: block.timestamp,

@@ -10,6 +10,6 @@ defmodule KniffelWeb.BlockView do
   end
 
   def render("block.json", %{block: block}) do
-    Kniffel.Blockchain.Block.json(block)
+    Kniffel.Blockchain.Block.json_encode(block)
   end
 end

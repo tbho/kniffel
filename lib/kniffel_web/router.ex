@@ -34,7 +34,7 @@ defmodule KniffelWeb.Router do
 
     get "/", GameController, :index
 
-    resources("/users", UserController, only: [:index, :show])
+    resources "/users", UserController, only: [:index, :show]
 
     get "/games/:id/scores", GameController, :show
 
@@ -47,15 +47,30 @@ defmodule KniffelWeb.Router do
     end
 
     resources "/transactions", TransactionController, only: [:new, :create]
+
+    resources "/sessions", SessionController, only: [:delete]
   end
 
   scope "/api", KniffelWeb do
     pipe_through :api
 
+    get "/sheduler/next_round", ShedulerController, :next_round
+    get "/sheduler/server_age", ShedulerController, :server_age
+    post "/sheduler/cancel_block_propose", ShedulerController, :cancel_block_propose
+    post "/sheduler/cancel_block_commit", ShedulerController, :cancel_block_commit
+
     get "/servers/this", ServerController, :this
+    post "/servers/roll", ServerController, :roll
     resources "/servers", ServerController, only: [:index, :show, :create]
+
     resources "/users", UserController, only: [:index, :show, :create]
+
     resources "/transactions", TransactionController, only: [:index, :show, :create]
+
+    post "/blocks/propose", BlockController, :propose
+    post "/blocks/commit", BlockController, :commit
+    post "/blocks/finalize", BlockController, :finalize
+    get "/blocks/height", BlockController, :height
     resources "/blocks", BlockController, only: [:index, :show, :create]
   end
 end

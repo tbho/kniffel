@@ -10,6 +10,6 @@ defmodule KniffelWeb.TransactionView do
   end
 
   def render("transaction.json", %{transaction: transaction}) do
-    Kniffel.Blockchain.Transaction.json(transaction)
+    Kniffel.Blockchain.Transaction.json_encode(transaction)
   end
 end

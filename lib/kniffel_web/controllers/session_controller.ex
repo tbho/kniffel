@@ -5,12 +5,11 @@ defmodule KniffelWeb.SessionController do
 
   def new(conn, _params) do
     render(conn, "new.html", %{
-      action: public_session_path(conn, :create),
-      register_url: ""
+      action: public_session_path(conn, :create)
     })
   end
 
-  def create(conn, %{"id" => id, "password" => password} = session) do
+  def create(conn, %{"user_name" => user_name, "password" => password} = session) do
     format = get_format(conn)
 
     params = %{
@@ -19,11 +18,12 @@ defmodule KniffelWeb.SessionController do
       refresh_token: session["remember_me"] == "true"
     }
 
-    result = Session.create_session(id, password, params)
+    result = Session.create_session(user_name, password, params)
 
     case {format, result} do
       {"html", {:ok, session}} ->
         path = get_session(conn, :redirect_url) || "/"
+        conn = delete_session(conn, :redirect_url)
 
         conn
         |> put_session(:access_token, session.access_token)
@@ -33,7 +33,17 @@ defmodule KniffelWeb.SessionController do
       {"html", {:error, :not_found}} ->
         conn
         |> put_flash(:error, gettext("failure"))
-        |> redirect(to: public_user_path(conn, :new))
+        |> redirect(to: public_session_path(conn, :new))
     end
+  end
+
+  def delete(conn, %{"id" => id}) do
+    id
+    |> Session.get_session!()
+    |> Session.delete_session()
+
+    conn
+    |> put_flash(:info, "Logged out!")
+    |> redirect(to: public_session_path(conn, :new))
   end
 end

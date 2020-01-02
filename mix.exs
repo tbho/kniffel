@@ -50,10 +50,11 @@ defmodule Kniffel.MixProject do
       {:poison, "~> 3.1"},
       {:rsa_ex, "~> 0.4"},
       {:ex_crypto, "~> 0.10.0"},
-      {:quantum, "~> 2.3"},
-      {:timex, "~> 3.0"},
+      # {:quantum, "~> 2.3"},
       {:httpoison, "~> 1.6"},
-      {:distillery, "~> 2.0"}
+      {:distillery, "~> 2.0"},
+      {:nebulex, "~> 1.1"},
+      {:timex, "~> 3.0"}
     ]
   end
 
@@ -66,8 +67,11 @@ defmodule Kniffel.MixProject do
   defp aliases do
     [
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate", "test"]
+      cleanup: ["run priv/repo/cleanup.exs"],
+      test: ["run priv/repo/block_test.exs"],
+      seed: ["run -e \"Kniffel.DBTasks.seed()\" --no-start"],
+      "ecto.reset": ["ecto.drop", "ecto.setup"]
+      # test: ["ecto.create --quiet", "ecto.migrate", "test"]
     ]
   end
 end

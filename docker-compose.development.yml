@@ -7,7 +7,7 @@ services:
       args:
         ENV: dev
       target: app
-    command: sh -c "mix deps.get && mix ecto.migrate && mix phx.server"
+    command: sh -c "mix deps.get && mix ecto.migrate && mix seed && mix phx.server"
     depends_on:
       - db
       - sync
@@ -17,7 +17,7 @@ services:
       DATABASE_URL: "psql://kniffel:kniffel@db/kniffel"
       PRIV_KEY_PATH: "/kniffel.key"
       AES_KEY: "test"
-      URL: "https://localhost:4000"
+      URL: "http://hoge.cloud:3000"
     ports:
       - "4000:4000"
 

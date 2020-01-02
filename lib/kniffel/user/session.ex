@@ -43,7 +43,7 @@ defmodule Kniffel.User.Session do
     |> put_change(:access_token, Token.generate())
     |> put_change(
       :access_token_issued_at,
-      DateTime.utc_now() |> DateTime.truncate(:second)
+      Timex.now()
     )
   end
 
@@ -53,7 +53,7 @@ defmodule Kniffel.User.Session do
     |> put_change(:refresh_token, Token.generate())
     |> put_change(
       :refresh_token_issued_at,
-      DateTime.utc_now() |> DateTime.truncate(:second)
+      Timex.now()
     )
   end
 
@@ -66,7 +66,7 @@ defmodule Kniffel.User.Session do
 
   def valid_access_token?(session, access_token) do
     session.access_token == access_token &&
-      DateTime.diff(DateTime.utc_now(), session.access_token_issued_at) <
+      DateTime.diff(Timex.now(), session.access_token_issued_at) <
         @access_token_validity
   end
 
@@ -79,7 +79,7 @@ defmodule Kniffel.User.Session do
 
   def valid_refresh_token?(session, refresh_token) do
     session.refresh_token == refresh_token &&
-      DateTime.diff(DateTime.utc_now(), session.refresh_token_issued_at) <
+      DateTime.diff(Timex.now(), session.refresh_token_issued_at) <
         @refresh_token_validity
   end
 
@@ -142,10 +142,10 @@ defmodule Kniffel.User.Session do
   @doc "Creates a session for a user identified by email and password"
   # @spec create_session(String.t(), String.t(), Map.t()) ::
   # {:ok, Session.t()} | {:error, atom}
-  def create_session(id, password, params) do
+  def create_session(user_name, password, params) do
     with {:ok, user} <-
            User
-           |> Repo.get(id)
+           |> Repo.get_by(user_name: user_name)
            |> Comeonin.Argon2.check_pass(password),
          {:ok, session} <-
            user
@@ -170,8 +170,8 @@ defmodule Kniffel.User.Session do
   end
 
   @doc "Delete session"
-  # @spec delete_session(Session.t(), User.t()) :: {:ok, Session.t()}
-  def delete_session(session, _user) do
+  # @spec delete_session(Session.t() :: {:ok, Session.t()}
+  def delete_session(session) do
     Repo.delete(session)
   end
 end

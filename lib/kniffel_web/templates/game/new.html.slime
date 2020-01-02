@@ -15,7 +15,7 @@ div.box
         h5.title.is-5 = gettext("Game")
         div.select.is-multiple
           / First elem in Enum.map is displayed, second is given to backend
-          = multiple_select(game_form, :user_ids, Enum.map(@users, &{&1.id, &1.id}), multiple: true, size: length(@users))
+          = multiple_select(game_form, :user_ids, Enum.map(@users, &{&1.user_name, &1.id}), multiple: true, size: length(@users))
 
     div.columns
       div.column

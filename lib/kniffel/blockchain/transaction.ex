@@ -16,7 +16,7 @@ defmodule Kniffel.Blockchain.Transaction do
   schema "transaction" do
     field :signature, :string
     field :data, :string
-    field :timestamp, :utc_datetime, default: DateTime.truncate(DateTime.utc_now(), :second)
+    field :timestamp, :string, default: Timex.now() |> Timex.format!("{ISO:Extended}")
 
     has_many(:scores, Score)
     has_many(:games, Game)
@@ -34,6 +34,7 @@ defmodule Kniffel.Blockchain.Transaction do
   def changeset_create(transaction, %{"password" => password} = attrs) do
     transaction
     |> cast(attrs, [:data])
+    |> cast(%{timestamp: Timex.now() |> Timex.format!("{ISO:Extended}")}, [:timestamp])
     |> put_assoc(:user, attrs["user"] || transaction.user)
     |> put_assoc(:block, attrs["block"] || transaction.block)
     |> put_assoc(:scores, attrs["scores"] || transaction.scores)
@@ -46,8 +47,8 @@ defmodule Kniffel.Blockchain.Transaction do
     transaction
     |> cast(attrs, [:id, :data, :timestamp, :signature])
     |> put_assoc(:user, attrs["user"] || transaction.user)
-    |> cast_assoc(:scores, with: &Score.changeset_p2p/2)
     |> cast_assoc(:games, with: &Game.changeset_p2p/2)
+    |> cast_assoc(:scores, with: &Score.changeset_p2p/2)
     |> put_assoc(:block, attrs["block"] || transaction.block)
     |> verify_changeset
   end
@@ -104,6 +105,18 @@ defmodule Kniffel.Blockchain.Transaction do
     %{
       id: transaction.id,
       data: Poison.decode!(transaction.data),
+      signature: transaction.signature,
+      timestamp: transaction.timestamp,
+      user_id: transaction.user_id,
+      block_index: transaction.block_index
+    }
+  end
+
+  @doc "Verify a block using the public key present in it"
+  def json_encode(%Kniffel.Blockchain.Transaction{} = transaction) do
+    %{
+      id: transaction.id,
+      data: transaction.data,
       signature: transaction.signature,
       timestamp: transaction.timestamp,
       user_id: transaction.user_id,

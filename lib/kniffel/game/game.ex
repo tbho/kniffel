@@ -41,6 +41,7 @@ defmodule Kniffel.Game do
   def changeset_p2p(game, attrs) do
     game
     |> cast(attrs, [:id, :inserted_at, :user_id])
+    |> put_assoc(:users, attrs["users"] || game.users)
   end
 
   # -----------------------------------------------------------------
@@ -48,6 +49,11 @@ defmodule Kniffel.Game do
   # -----------------------------------------------------------------
   def get_scores() do
     Repo.all(from s in Score, where: s.score_type != "none")
+    |> Enum.map(&get_score_with_history(&1))
+  end
+
+  def get_scores_for_game(game_id) do
+    Repo.all(from s in Score, where: s.score_type != "none", where: s.game_id == ^game_id)
     |> Enum.map(&get_score_with_history(&1))
   end
 
@@ -64,7 +70,7 @@ defmodule Kniffel.Game do
   def get_score_with_history(%Score{predecessor: nil} = score), do: score
 
   def get_score_with_history(%Score{predecessor: _} = score) do
-    score = Repo.preload(score, :predecessor)
+    score = Repo.preload(score, [:predecessor, transaction: [:block]])
 
     Map.update!(score, :predecessor, fn pre ->
       get_score_with_history(pre)
@@ -78,8 +84,11 @@ defmodule Kniffel.Game do
   end
 
   def create_inital_score(score_params) do
-    score_params
-    |> Map.put("dices_to_roll", ["a", "b", "c", "d", "e"])
+    ["a", "b", "c", "d", "e"]
+    |> Enum.reduce(
+      score_params,
+      &Map.put(&2, "dices_to_roll_#{&1}", "on")
+    )
     |> Map.put("predecessor_id", nil)
     |> Map.put("score_type", :none)
     |> create_score
@@ -110,7 +119,7 @@ defmodule Kniffel.Game do
       |> Map.put("predecessor", pre_score)
 
     %Score{}
-    |> Repo.preload([:predecessor, :game, :user, :transaction])
+    |> Repo.preload([:predecessor, :game, :user, :transaction, :server])
     |> Score.changeset(score_params)
     |> Repo.insert()
   end
@@ -123,10 +132,14 @@ defmodule Kniffel.Game do
 
   def change_score(
         score \\ %Score{},
-        attrs \\ %{"dices_to_roll" => ["a", "b", "c", "d", "e"], "predecessor_id" => nil}
+        attrs \\ Enum.reduce(
+          ["a", "b", "c", "d", "e"],
+          %{"predecessor_id" => nil},
+          &Map.put(&2, "dices_to_roll_#{&1}", "on")
+        )
       ) do
     score
-    |> Repo.preload([:predecessor, :user, :game, :transaction])
+    |> Repo.preload([:predecessor, :user, :game, :transaction, :server])
     |> Score.changeset(attrs)
   end
 
@@ -134,8 +147,11 @@ defmodule Kniffel.Game do
   # -- Game
   # -----------------------------------------------------------------
 
-  def get_games() do
+  def get_games_for_user(user_id) do
     Game
+    |> join(:left, [g], u in assoc(g, :users))
+    # |> where([g], g.user_id == ^user_id)
+    |> where([g, u], u.id == ^user_id)
     |> Repo.all()
   end
 
@@ -176,6 +192,18 @@ defmodule Kniffel.Game do
         select: s.score_type
 
     Repo.all(query)
+  end
+
+  def count_score_types_for_game_and_user(game_id, user_id) do
+    query =
+      from s in Score,
+        where: s.game_id == ^game_id,
+        where: s.user_id == ^user_id,
+        where: s.score_type != "none",
+        where: s.score_type != "pre",
+        select: s.score_type
+
+    Repo.aggregate(query, :count, :score_type)
   end
 
   def is_score_without_type_for_game_and_user?(game_id, user_id) do

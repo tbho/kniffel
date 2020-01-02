@@ -22,6 +22,7 @@ defmodule Kniffel.User do
     field(:private_key_crypt, :string)
     field(:password, :string, virtual: true)
     field(:password_hash, :string)
+    field(:user_name, :string)
 
     many_to_many :games, Kniffel.User, join_through: "game_users", on_replace: :delete
     has_many(:scores, Score)
@@ -32,8 +33,19 @@ defmodule Kniffel.User do
   end
 
   @doc false
-  def changeset_gen_id(user, %{"private_key" => private_key, "password" => password} = attrs) do
+  def changeset_gen_id(user, %{"private_key" => ""} = attrs) do
+    {:ok, private_key} = ExPublicKey.generate_key(4096)
+    changeset_encrypt_private_key(user, private_key, attrs)
+  end
+
+  @doc false
+  def changeset_gen_id(user, %{"private_key" => private_key} = attrs) do
     {:ok, private_key} = ExPublicKey.loads(private_key)
+    changeset_encrypt_private_key(user, private_key, attrs)
+  end
+
+  @doc false
+  defp changeset_encrypt_private_key(user, private_key, %{"password" => password} = attrs) do
     {:ok, private_key_pem} = ExPublicKey.pem_encode(private_key)
 
     aes_256_key = :crypto.hash(:sha256, System.get_env("AES_KEY"))
@@ -60,11 +72,12 @@ defmodule Kniffel.User do
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:id, :password, :private_key_crypt, :private_key, :public_key])
+    |> cast(attrs, [:id, :user_name, :password, :private_key_crypt, :private_key, :public_key])
     |> validate_password
     |> put_assoc(:games, attrs["games"] || user.games)
     |> put_assoc(:scores, attrs["scores"] || user.scores)
     |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
+    |> unique_constraint(:user_name)
   end
 
   @doc false
@@ -77,10 +90,11 @@ defmodule Kniffel.User do
       |> Map.put("id", id)
 
     user
-    |> cast(attrs, [:id, :public_key])
+    |> cast(attrs, [:id, :user_name, :public_key])
     |> put_assoc(:games, attrs["games"] || user.games)
     |> put_assoc(:scores, attrs["scores"] || user.scores)
     |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
+    |> unique_constraint(:user_name)
   end
 
   defp validate_password(changeset) do
@@ -128,21 +142,27 @@ defmodule Kniffel.User do
   end
 
   def create_user(user_params) do
-    {:ok, user} =
+    user =
       %User{}
       |> Repo.preload([:games, :scores, :transactions])
       |> User.changeset_gen_id(user_params)
       |> Repo.insert()
 
-    servers = Server.get_others_servers()
+    case user do
+      {:ok, user} ->
+        servers = Server.get_servers(false)
 
-    Enum.map(servers, fn server ->
-      HTTPoison.post(server.url <> "/api/users", Poison.encode!(%{user: User.json(user)}), [
-        {"Content-Type", "application/json"}
-      ])
-    end)
+        Enum.map(servers, fn server ->
+          HTTPoison.post(server.url <> "/api/users", Poison.encode!(%{user: User.json(user)}), [
+            {"Content-Type", "application/json"}
+          ])
+        end)
 
-    {:ok, user}
+        {:ok, user}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
   end
 
   def create_user_p2p(user_params) do
@@ -162,6 +182,7 @@ defmodule Kniffel.User do
   def json(%Kniffel.User{} = user) do
     %{
       id: user.id,
+      user_name: user.user_name,
       public_key: user.public_key
     }
   end
