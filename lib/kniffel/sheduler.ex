@@ -67,7 +67,7 @@ defmodule Kniffel.Sheduler do
 
   def handle_info(:next_round, state) do
     Logger.info("-> Start a new round")
-    round_specification = get_round_specification()
+    round_specification = get_round_specification() |> Logger.debug()
     # get other master nodes
     servers = Server.get_authorized_servers(false)
 
@@ -384,7 +384,7 @@ defmodule Kniffel.Sheduler do
   end
 
   def cancel_block_propose(reason) do
-    %{round_number: round_number} = get_round_specification()
+    %{round_number: round_number} = get_round_specification() |> Logger.debug()
     this_server = Server.get_this_server()
 
     data = %{
