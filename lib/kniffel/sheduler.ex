@@ -67,7 +67,8 @@ defmodule Kniffel.Sheduler do
 
   def handle_info(:next_round, state) do
     Logger.info("-> Start a new round")
-    round_specification = get_round_specification() |> Logger.debug()
+    round_specification = get_round_specification()
+    Logger.debug("Round: #{inspect(round_specification)}")
     # get other master nodes
     servers = Server.get_authorized_servers(false)
 
@@ -80,6 +81,7 @@ defmodule Kniffel.Sheduler do
       # if not he is choosen to abort if lead server runs in a timeout
       case ServerAge.is_leader?(server) do
         true ->
+          Logger.debug("--- Server is leader. Round number: #{inspect(round_specification["round_number"])}")
           round_specification
           |> schedule(:propose_block)
           |> schedule(:commit_block)
@@ -87,6 +89,7 @@ defmodule Kniffel.Sheduler do
 
         false ->
           # position = Kniffel.Blockchain.get_position_in_server_queue(server)
+          Logger.debug("--- Server is canceler. Round number: #{inspect(round_specification["round_number"])}")
           round_specification
           |> schedule(:cancel_block_propose)
           |> schedule(:cancel_block_commit)
@@ -384,8 +387,10 @@ defmodule Kniffel.Sheduler do
   end
 
   def cancel_block_propose(reason) do
-    %{round_number: round_number} = get_round_specification() |> Logger.debug()
+    %{round_number: round_number} = round_specification = get_round_specification()
     this_server = Server.get_this_server()
+
+    Logger.debug("#{inspect(round_specification)}")
 
     data = %{
       server_id: this_server.id,
@@ -411,8 +416,10 @@ defmodule Kniffel.Sheduler do
   end
 
   def cancel_block_commit(reason) do
-    %{round_number: round_number} = get_round_specification()
+    %{round_number: round_number} = round_specification = get_round_specification()
     this_server = Server.get_this_server()
+
+    Logger.debug("#{inspect(round_specification)}")
 
     data = %{
       server_id: this_server.id,
@@ -464,8 +471,8 @@ defmodule Kniffel.Sheduler do
         "timeout" ->
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
-               Logger.debug(round_specification),
-               Logger.debug(round_params),
+               Logger.debug("#{round_specification}"),
+               Logger.debug("#{round_params}"),
                true = incoming_round_number == round_number,
                cancel_time <- get_round_time(round_specification, :cancel_block_propose),
                1 <- Timex.compate(Timex.now(), cancel_time) do
@@ -526,13 +533,15 @@ defmodule Kniffel.Sheduler do
         "server_id" => server_id,
         "round_number" => incoming_round_number,
         "reason" => reason
-      }) do
+      } = round_params) do
     with %Server{authority: true} <- Server.get_server(server_id) do
       case reason do
         "timeout" ->
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
                true = incoming_round_number == round_number,
+               Logger.debug("#{round_specification}"),
+               Logger.debug("#{round_params}"),
                cancel_time <- get_round_time(round_specification, :cancel_block_commit),
                1 <- Timex.compate(Timex.now(), cancel_time) do
             Enum.map(
