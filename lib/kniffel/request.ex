@@ -1,4 +1,6 @@
 defmodule Kniffel.Request do
+  require Logger
+
   def get(url) do
     HTTPoison.get(url, [
       {"Content-Type", "application/json"}
@@ -20,16 +22,22 @@ defmodule Kniffel.Request do
          {:json, {:ok, response_body}} <- {:json, Poison.decode(response.body)} do
       {:ok, response_body}
     else
-      {:request, {:error, _message}} ->
+      {:request, {:error, message}} ->
+        Logger.debug(message)
+        Logger.debug(response)
         {:error, "request_failed"}
 
-      {:status_code, _status_code} ->
+      {:status_code, status_code} ->
+        Logger.debug(status_code)
+        Logger.debug(response)
         {:error, "status_code"}
 
       # false ->
       #   {:error, "wrong_content_type"}
 
-      {:json, {:error, _message}} ->
+      {:json, {:error, message}} ->
+        Logger.debug(message)
+        Logger.debug(response)
         {:error, "decode_failed"}
     end
   end

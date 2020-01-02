@@ -441,7 +441,7 @@ defmodule Kniffel.Sheduler do
         "server_id" => server_id,
         "round_number" => incoming_round_number,
         "reason" => reason
-      }) do
+      } = round_params) do
     with %Server{authority: true} <- Server.get_server(server_id) do
       case reason do
         "no_transaction" ->
@@ -464,6 +464,8 @@ defmodule Kniffel.Sheduler do
         "timeout" ->
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
+               Logger.debug(round_specification),
+               Logger.debug(round_params),
                true = incoming_round_number == round_number,
                cancel_time <- get_round_time(round_specification, :cancel_block_propose),
                1 <- Timex.compate(Timex.now(), cancel_time) do
