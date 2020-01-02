@@ -23,13 +23,13 @@ defmodule Kniffel.Request do
       {:ok, response_body}
     else
       {:request, {:error, message}} ->
-        {:ok, %{body: body} = response
+        {:ok, %{body: body}} = response
         Logger.debug(message)
         Logger.debug(body)
         {:error, "request_failed"}
 
       {:status_code, status_code} ->
-        {:ok, %{body: body} = response
+        {:ok, %{body: body}} = response
         Logger.debug(status_code)
         Logger.debug(body)
         {:error, "status_code"}
@@ -38,7 +38,7 @@ defmodule Kniffel.Request do
       #   {:error, "wrong_content_type"}
 
       {:json, {:error, message}} ->
-        {:ok, %{body: body} = response
+        {:ok, %{body: body}} = response
         Logger.debug(message)
         Logger.debug(body)
         {:error, "decode_failed"}
