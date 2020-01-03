@@ -2,16 +2,31 @@ defmodule Kniffel.Request do
   require Logger
 
   def get(url) do
-    HTTPoison.get(url, [
+    {error, _} = response = HTTPoison.get(url, [
       {"Content-Type", "application/json"}
-    ])
+    ]) |> IO.inspect
+
+    if :error == error do
+      IO.inspect(url)
+      IO.inspect(response)
+    end
+
+    response
     |> handle_response
   end
 
   def post(url, params) do
-    HTTPoison.post(url, Poison.encode!(params), [
+    {error, _} =response = HTTPoison.post(url, Poison.encode!(params), [
       {"Content-Type", "application/json"}
-    ])
+    ]) |> IO.inspect
+
+    if :error == error do
+      IO.inspect(url)
+      IO.inspect(params)
+      IO.inspect(response)
+    end
+
+    response
     |> handle_response
   end
 

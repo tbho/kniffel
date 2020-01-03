@@ -26,7 +26,7 @@ defmodule Kniffel.Sheduler do
          {:round_specification, r} when r in [:ok, :default] <-
            {:round_specification, request_round_specification_from_network()},
          # get the round_specification for next round from master_nodes
-         {:master_server, :ok} <- {:master, Server.add_this_server_to_master_server()},
+         {:master, :ok} <- {:master, Server.add_this_server_to_master_server()},
          # add server to network
          {:server_age, a} when a in [:ok, :default] <-
            {:server_age, request_server_age_from_network()},
