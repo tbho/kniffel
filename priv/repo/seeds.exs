@@ -40,6 +40,9 @@ case Server.get_server(id) do
     |> Repo.insert()
 end
 
+from(s in Server, where: s.url == "https://kniffel.app", update: [set: [authority: true]])
+|> Repo.update_all([])
+
 url = "http://hoge.cloud:3000"
 url = "https://kniffel.app"
 
