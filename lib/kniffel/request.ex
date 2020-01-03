@@ -37,7 +37,7 @@ defmodule Kniffel.Request do
         {:error, "request_failed"}
 
       {:status_code, status_code} ->
-        Logger.debug("#{inspect(message)}")
+        Logger.debug("#{inspect(status_code)}")
         {:error, "status_code"}
 
       # false ->
