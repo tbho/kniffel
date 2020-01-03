@@ -19,20 +19,9 @@ defmodule Kniffel.Request do
   end
 
   def post(url, params) do
-    {error, _} =
-      response =
-      HTTPoison.post(url, Poison.encode!(params), [
-        {"Content-Type", "application/json"}
-      ])
-      |> IO.inspect()
-
-    if :error == error do
-      IO.inspect(url)
-      IO.inspect(params)
-      IO.inspect(response)
-    end
-
-    response
+    HTTPoison.post(url, Poison.encode!(params), [
+      {"Content-Type", "application/json"}
+    ])
     |> handle_response
   end
 
@@ -44,24 +33,18 @@ defmodule Kniffel.Request do
       {:ok, response_body}
     else
       {:request, {:error, message}} ->
-        {:ok, %{body: body}} = response
-        Logger.debug(message)
-        Logger.debug(body)
+        Logger.debug("#{inspect(message)}")
         {:error, "request_failed"}
 
       {:status_code, status_code} ->
-        {:ok, %{body: body}} = response
-        Logger.debug(status_code)
-        Logger.debug(body)
+        Logger.debug("#{inspect(message)}")
         {:error, "status_code"}
 
       # false ->
       #   {:error, "wrong_content_type"}
 
       {:json, {:error, message}} ->
-        {:ok, %{body: body}} = response
-        Logger.debug(message)
-        Logger.debug(body)
+        Logger.debug("#{inspect(message)}")
         {:error, "decode_failed"}
     end
   end

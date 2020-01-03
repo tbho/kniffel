@@ -76,7 +76,7 @@ defmodule Kniffel.Sheduler do
     end
   end
 
-  def handle_event(:next_round, _master_sheduler) do
+  def handle_event(:next_round, master_sheduler) do
     Logger.info("-> Start a new round")
     round_specification = get_round_specification()
     Logger.debug("Round: #{inspect(round_specification)}")
@@ -97,9 +97,9 @@ defmodule Kniffel.Sheduler do
           )
 
           round_specification
-          |> schedule(:propose_block)
-          |> schedule(:commit_block)
-          |> schedule(:finalize_block)
+          |> schedule(:propose_block, master_sheduler)
+          |> schedule(:commit_block, master_sheduler)
+          |> schedule(:finalize_block, master_sheduler)
 
         false ->
           # position = Kniffel.Blockchain.get_position_in_server_queue(server)
@@ -108,15 +108,15 @@ defmodule Kniffel.Sheduler do
           )
 
           round_specification
-          |> schedule(:cancel_block_propose)
-          |> schedule(:cancel_block_commit)
+          |> schedule(:cancel_block_propose, master_sheduler)
+          |> schedule(:cancel_block_commit, master_sheduler)
       end
     else
       Logger.info("--- No other master node found! I will shedule a new round and try again.")
       # if no other server in network save new round specification
       next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
       # schedule the new round
-      schedule(round_specification, :next_round)
+      schedule(round_specification, :next_round, master_sheduler)
 
       Logger.info(
         "-! Round finished. Next Round will start at: " <>
@@ -154,25 +154,25 @@ defmodule Kniffel.Sheduler do
     Kniffel.Blockchain.finalize_block()
   end
 
-  def handle_event(:cancel_block_propose, _master_sheduler) do
+  def handle_event(:cancel_block_propose, master_sheduler) do
     Logger.info("--- Cancel block propose (timeout)")
-    cancel_block_propose(:timeout)
+    cancel_block_propose(:timeout, master_sheduler)
   end
 
-  def handle_event(:cancel_block_commit, _master_sheduler) do
+  def handle_event(:cancel_block_commit, master_sheduler) do
     Logger.info("--- Cancel block commit (timeout)")
-    cancel_block_commit(:timeout)
+    cancel_block_commit(:timeout, master_sheduler)
   end
 
   # ----------------------------------------------------------------------------
   # ---  Shedule - Methods ---
   # ----------------------------------------------------------------------------
 
-  def schedule(round_specification, type) do
+  def schedule(round_specification, type, process) do
     cache_atom = (Atom.to_string(type) <> "_timer") |> String.to_atom()
     time = get_round_time(round_specification, type)
 
-    timer = Process.send_after(self(), type, calculate_diff_to_now(time))
+    timer = Process.send_after(process, type, calculate_diff_to_now(time))
     Kniffel.Cache.set(cache_atom, timer, ttl: calculate_diff_to_now(time, :seconds))
     round_specification
   end
@@ -508,7 +508,7 @@ defmodule Kniffel.Sheduler do
             # if no other server in network save new round specification
             next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
             # schedule the new round
-            schedule(round_specification, :next_round)
+            schedule(round_specification, :next_round, self())
 
             Logger.info(
               "-! Round canceled. Next Round will start at: " <>
@@ -578,7 +578,7 @@ defmodule Kniffel.Sheduler do
             # if no other server in network save new round specification
             next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
             # schedule the new round
-            schedule(round_specification, :next_round)
+            schedule(round_specification, :next_round, self())
 
             Logger.info(
               "-! Round canceled. Next Round will start at: " <>
