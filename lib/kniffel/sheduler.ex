@@ -38,6 +38,8 @@ defmodule Kniffel.Sheduler do
          # get server_age from network
          %{} = round_specification <- get_round_specification() do
       # calculate diff (in milliseconds) till start of new round
+      Logger.debug("Starting with: #{inspect(round_specification)}")
+
       diff_milliseconds =
         round_specification
         |> get_round_time(:round_begin)
@@ -52,7 +54,7 @@ defmodule Kniffel.Sheduler do
       )
     else
       {:master, {:error, message}} ->
-        Logger.debug("#{inspect(message)}")
+        Logger.debug(inspect(message))
 
         Logger.error(
           "Error while preparing to start sheduler (add server to master_server network), repeating in 10 seconds again!"
@@ -309,19 +311,34 @@ defmodule Kniffel.Sheduler do
            end),
          sort_specs <- Enum.sort_by(grouped_specs, &elem(&1, 1), &>=/2) do
       {round_specification, _count} = List.first(sort_specs)
+      Logger.debug("got round_specification from network: #{inspect(round_specification)}")
 
       if round_specification do
         Kniffel.Cache.set(:round_specification, round_specification)
         :ok
       else
-        Logger.debug("round_specification from network is nil")
-        Kniffel.Cache.set(:round_specification, get_default_round_specification())
+        round_specification = get_default_round_specification()
+
+        Logger.debug(
+          "round_specification from network is nil, setting default now: #{
+            inspect(round_specification)
+          }"
+        )
+
+        Kniffel.Cache.set(:round_specification, round_specification)
         :default
       end
     else
       true ->
-        Logger.debug("no round_specifications recieved from network")
-        Kniffel.Cache.set(:round_specification, get_default_round_specification())
+        round_specification = get_default_round_specification()
+
+        Logger.debug(
+          "no round_specifications recieved from network, setting default now: #{
+            inspect(round_specification)
+          }"
+        )
+
+        Kniffel.Cache.set(:round_specification, round_specification)
         :default
     end
   end
@@ -402,7 +419,7 @@ defmodule Kniffel.Sheduler do
     %{round_number: round_number} = round_specification = get_round_specification()
     this_server = Server.get_this_server()
 
-    Logger.debug("#{inspect(round_specification)}")
+    Logger.debug(inspect(round_specification))
 
     data = %{
       server_id: this_server.id,
@@ -431,7 +448,7 @@ defmodule Kniffel.Sheduler do
     %{round_number: round_number} = round_specification = get_round_specification()
     this_server = Server.get_this_server()
 
-    Logger.debug("#{inspect(round_specification)}")
+    Logger.debug(inspect(round_specification))
 
     data = %{
       server_id: this_server.id,
@@ -485,8 +502,8 @@ defmodule Kniffel.Sheduler do
         "timeout" ->
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
-               Logger.debug("#{round_specification}"),
-               Logger.debug("#{round_params}"),
+               Logger.debug(inspect(round_specification)),
+               Logger.debug(inspect(round_params)),
                true = incoming_round_number == round_number,
                cancel_time <- get_round_time(round_specification, :cancel_block_propose),
                1 <- Timex.compate(Timex.now(), cancel_time) do
@@ -556,8 +573,8 @@ defmodule Kniffel.Sheduler do
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
                true = incoming_round_number == round_number,
-               Logger.debug("#{round_specification}"),
-               Logger.debug("#{round_params}"),
+               Logger.debug(inspect(round_specification)),
+               Logger.debug(inspect(round_params)),
                cancel_time <- get_round_time(round_specification, :cancel_block_commit),
                1 <- Timex.compate(Timex.now(), cancel_time) do
             Enum.map(

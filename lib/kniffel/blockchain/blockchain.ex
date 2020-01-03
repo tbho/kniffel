@@ -543,7 +543,7 @@ defmodule Kniffel.Blockchain do
         result ++ [Map.put(height_response, "timestamp", timestamp)]
       else
         {:error, error} ->
-          Logger.debug(error)
+          Logger.debug(inspect(error))
           result
       end
     end)

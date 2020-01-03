@@ -56,7 +56,7 @@ case Server.get_server_by_url(url) do
         )
 
       {:error, message} ->
-        Logger.debug(message)
+        Logger.debug(inspect(message))
 
         raise(
           "Master-node " <>

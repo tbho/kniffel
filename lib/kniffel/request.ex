@@ -2,19 +2,9 @@ defmodule Kniffel.Request do
   require Logger
 
   def get(url) do
-    {error, _} =
-      response =
-      HTTPoison.get(url, [
-        {"Content-Type", "application/json"}
-      ])
-      |> IO.inspect()
-
-    if :error == error do
-      IO.inspect(url)
-      IO.inspect(response)
-    end
-
-    response
+    HTTPoison.get(url, [
+      {"Content-Type", "application/json"}
+    ])
     |> handle_response
   end
 
@@ -33,18 +23,18 @@ defmodule Kniffel.Request do
       {:ok, response_body}
     else
       {:request, {:error, message}} ->
-        Logger.debug("#{inspect(message)}")
+        Logger.debug(inspect(message))
         {:error, "request_failed"}
 
       {:status_code, status_code} ->
-        Logger.debug("#{inspect(status_code)}")
+        Logger.debug(inspect(status_code))
         {:error, "status_code"}
 
       # false ->
       #   {:error, "wrong_content_type"}
 
       {:json, {:error, message}} ->
-        Logger.debug("#{inspect(message)}")
+        Logger.debug(inspect(message))
         {:error, "decode_failed"}
     end
   end
