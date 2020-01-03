@@ -30,9 +30,12 @@ case Server.get_server(id) do
 
   nil ->
     %Server{}
-    |> Server.changeset(%{
+    |> Server.cast_changeset(%{
       "url" => System.get_env("URL"),
-      "public_key" => pem_string
+      "public_key" => pem_string,
+      "authority" => false,
+      "id" => id
+
     })
     |> Repo.insert()
 end

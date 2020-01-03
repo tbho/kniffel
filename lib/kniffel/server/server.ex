@@ -203,6 +203,7 @@ defmodule Kniffel.Server do
 
   def add_this_server_to_master_server() do
     with %Server{} = this_server <- Server.get_this_server(),
+          true <- this_server.authority,
          %Server{} = master_server <- Server.get_authorized_server(false),
          {:ok, %{"server" => server}} <-
            Kniffel.Request.post(master_server.url <> "/api/servers", %{
@@ -213,6 +214,9 @@ defmodule Kniffel.Server do
     else
       {:ok, %{"ok" => "Server already known."}} ->
         :ok
+
+      false ->
+          :ok
 
       nil ->
         {:error, "could not get server from database!"}
