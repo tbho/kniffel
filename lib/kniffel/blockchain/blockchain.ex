@@ -454,7 +454,7 @@ defmodule Kniffel.Blockchain do
     timestamp is choosen and inserted or spread to network.
   """
   def compare_block_height_with_network() do
-    block_height_responses = get_heigt_from_network() |> IO.inspect()
+    block_height_responses = get_heigt_from_network()
     # if no server is in network empty list is returned
     # otherwise answers will be grouped and answer with highest count is choosen
     # if all respones are unique the block height with highest index and oldest timestamp is choosen
@@ -465,7 +465,6 @@ defmodule Kniffel.Blockchain do
              {uniq_block_height, Enum.count(block_height_responses, &(uniq_block_height == &1))}
            end) do
       # test if all answers are unique (have a count of 1)
-      IO.inspect(grouped_block_height)
 
       if Enum.all?(grouped_block_height, &(elem(&1, 1) == 1)) do
         # ---------------------------
@@ -475,10 +474,9 @@ defmodule Kniffel.Blockchain do
 
         # get block with highest index and oldest timestamp from responses
         block_height = get_highest_and_oldest_block_height(block_height_responses)
-        IO.inspect(block_height)
 
         # get last block from this node
-        %Block{} = last_block = Kniffel.Blockchain.get_last_block() |> IO.inspect()
+        %Block{} = last_block = Kniffel.Blockchain.get_last_block()
 
         # compare last block from this server to block with highest index and oldest timestamp from network
         with {:index, true} <- {:index, last_block.index == block_height["index"]},
@@ -524,11 +522,9 @@ defmodule Kniffel.Blockchain do
         # the response with the highest count is selected
         sort_block_heights = Enum.sort_by(grouped_block_height, &elem(&1, 1), &>=/2)
         {block_height, _count} = List.first(sort_block_heights)
-        IO.inspect(block_height)
 
         # and will be requested and inserted
         request_and_insert_block_from_server(block_height["server_id"], block_height["index"])
-        :ok
       end
     else
       true ->
@@ -604,7 +600,7 @@ defmodule Kniffel.Blockchain do
 
       {:hash, false} ->
         # delete last block and mark transactions as not in block
-        set_transaction_ids_to_nil_for_block(index) |> IO.inspect()
+        set_transaction_ids_to_nil_for_block(index)
         delete_block(last_block)
 
         # insert new block
@@ -638,8 +634,6 @@ defmodule Kniffel.Blockchain do
   end
 
   defp insert_block_network(%{"server_id" => server_id, "data" => data} = block_params) do
-    IO.inspect(server_id)
-    IO.inspect(block_params)
     data = Poison.decode!(data)
 
     server = Server.get_server(server_id)

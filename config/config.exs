@@ -10,7 +10,9 @@ use Mix.Config
 config :kniffel,
   ecto_repos: [Kniffel.Repo]
 
-config :kniffel, Kniffel.Repo, pool_size: 10
+config :kniffel, Kniffel.Repo,
+  pool_size: 10,
+  log: :false
 
 # Configures the endpoint
 config :kniffel, KniffelWeb.Endpoint,

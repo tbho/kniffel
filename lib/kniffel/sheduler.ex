@@ -21,14 +21,15 @@ defmodule Kniffel.Sheduler do
   def handle_info(:prepare_node, state) do
     Logger.info("-# Prepare and start sheduler")
 
-    with :ok <- Blockchain.compare_block_height_with_network(),
+    with {:height, :ok} <- {:height, Blockchain.compare_block_height_with_network()},
          # compare blocks with other servers (get server adress without adding server to network)
-         r when r in [:ok, :default] <-
-           request_round_specification_from_network(),
+         {:round_specification, r} when r in [:ok, :default] <-
+           {:round_specification, request_round_specification_from_network()},
          # get the round_specification for next round from master_nodes
-         :ok <- Server.add_this_server_to_master_server(),
+         {:master_server, :ok} <- {:master, Server.add_this_server_to_master_server()},
          # add server to network
-         a when a in [:ok, :default] <- request_server_age_from_network(),
+         {:server_age, a} when a in [:ok, :default] <-
+           {:server_age, request_server_age_from_network()},
          # get server_age from network
          %{} = round_specification <- get_round_specification() do
       # calculate diff (in milliseconds) till start of new round
@@ -45,16 +46,21 @@ defmodule Kniffel.Sheduler do
           Timex.format!(get_round_time(round_specification, :round_begin), "{ISO:Extended}")
       )
     else
-      :error ->
+      {:master, {:error, message}} ->
+        Logger.debug("#{inspect(message)}")
         Logger.error(
-          "Error while preparing to start sheduler (request data from network), repeating in 10 seconds again!"
+          "Error while preparing to start sheduler (add server to master_server network), repeating in 10 seconds again!"
+        )
+
+        Process.send_after(self(), :prepare_node, 10_000)
+      {reason, :error} ->
+        Logger.error(
+          "Error while preparing to start sheduler (request #{inspect(reason)} data from network), repeating in 10 seconds again!"
         )
 
         Process.send_after(self(), :prepare_node, 10_000)
 
-      {:error, error} ->
-        Logger.debug(error)
-
+      {:error, :no_round_specification_in_cache} ->
         Logger.error(
           "Error while preparing to start sheduler (no round_specification in cache), repeating in 10 seconds again!"
         )
@@ -81,7 +87,10 @@ defmodule Kniffel.Sheduler do
       # if not he is choosen to abort if lead server runs in a timeout
       case ServerAge.is_leader?(server) do
         true ->
-          Logger.debug("--- Server is leader. Round number: #{inspect(round_specification.round_number)}")
+          Logger.debug(
+            "--- Server is leader. Round number: #{inspect(round_specification.round_number)}"
+          )
+
           round_specification
           |> schedule(:propose_block)
           |> schedule(:commit_block)
@@ -89,7 +98,10 @@ defmodule Kniffel.Sheduler do
 
         false ->
           # position = Kniffel.Blockchain.get_position_in_server_queue(server)
-          Logger.debug("--- Server is canceler. Round number: #{inspect(round_specification.round_number)}")
+          Logger.debug(
+            "--- Server is canceler. Round number: #{inspect(round_specification.round_number)}"
+          )
+
           round_specification
           |> schedule(:cancel_block_propose)
           |> schedule(:cancel_block_commit)
@@ -306,11 +318,13 @@ defmodule Kniffel.Sheduler do
         Kniffel.Cache.set(:round_specification, round_specification)
         :ok
       else
+        Logger.debug("round_specification from network is nil")
         Kniffel.Cache.set(:round_specification, get_default_round_specification())
         :default
       end
     else
       true ->
+        Logger.debug("no round_specifications recieved from network")
         Kniffel.Cache.set(:round_specification, get_default_round_specification())
         :default
     end
@@ -354,11 +368,13 @@ defmodule Kniffel.Sheduler do
         Kniffel.Cache.set(:server_age, server_age)
         :ok
       else
+        Logger.debug("server_age from network is nil")
         ServerAge.get_server_age()
         :default
       end
     else
       true ->
+        Logger.debug("no server_age recieved from network")
         ServerAge.get_server_age()
         :default
     end
@@ -444,11 +460,13 @@ defmodule Kniffel.Sheduler do
     end
   end
 
-  def handle_cancel_block_propose(%{
-        "server_id" => server_id,
-        "round_number" => incoming_round_number,
-        "reason" => reason
-      } = round_params) do
+  def handle_cancel_block_propose(
+        %{
+          "server_id" => server_id,
+          "round_number" => incoming_round_number,
+          "reason" => reason
+        } = round_params
+      ) do
     with %Server{authority: true} <- Server.get_server(server_id) do
       case reason do
         "no_transaction" ->
@@ -529,11 +547,13 @@ defmodule Kniffel.Sheduler do
     end
   end
 
-  def handle_cancel_block_commit(%{
-        "server_id" => server_id,
-        "round_number" => incoming_round_number,
-        "reason" => reason
-      } = round_params) do
+  def handle_cancel_block_commit(
+        %{
+          "server_id" => server_id,
+          "round_number" => incoming_round_number,
+          "reason" => reason
+        } = round_params
+      ) do
     with %Server{authority: true} <- Server.get_server(server_id) do
       case reason do
         "timeout" ->
