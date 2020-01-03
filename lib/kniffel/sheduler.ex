@@ -506,7 +506,7 @@ defmodule Kniffel.Sheduler do
                Logger.debug(inspect(round_params)),
                true = incoming_round_number == round_number,
                cancel_time <- get_round_time(round_specification, :cancel_block_propose),
-               1 <- Timex.compate(Timex.now(), cancel_time) do
+               1 <- Timex.compare(Timex.now(), cancel_time) do
             Enum.map(
               [
                 :propose_block,
@@ -576,7 +576,7 @@ defmodule Kniffel.Sheduler do
                Logger.debug(inspect(round_specification)),
                Logger.debug(inspect(round_params)),
                cancel_time <- get_round_time(round_specification, :cancel_block_commit),
-               1 <- Timex.compate(Timex.now(), cancel_time) do
+               1 <- Timex.compare(Timex.now(), cancel_time) do
             Enum.map(
               [
                 :propose_block,
