@@ -18,7 +18,12 @@ defmodule Kniffel.Sheduler do
     {:ok, state}
   end
 
-  def handle_info(:prepare_node, state) do
+  def handle_info(event, state) do
+    spawn(Kniffel.Sheduler, :handle_event, [event, self()])
+    {:noreply, state}
+  end
+
+  def handle_event(:prepare_node, master_sheduler) do
     Logger.info("-# Prepare and start sheduler")
 
     with {:height, :ok} <- {:height, Blockchain.compare_block_height_with_network()},
@@ -39,7 +44,7 @@ defmodule Kniffel.Sheduler do
         |> calculate_diff_to_now
 
       # shedule new round
-      Process.send_after(self(), :next_round, diff_milliseconds)
+      Process.send_after(master_sheduler, :next_round, diff_milliseconds)
 
       Logger.info(
         "-✓ Started sheduler successful! First round will start at: " <>
@@ -48,30 +53,30 @@ defmodule Kniffel.Sheduler do
     else
       {:master, {:error, message}} ->
         Logger.debug("#{inspect(message)}")
+
         Logger.error(
           "Error while preparing to start sheduler (add server to master_server network), repeating in 10 seconds again!"
         )
 
-        Process.send_after(self(), :prepare_node, 10_000)
+        Process.send_after(master_sheduler, :prepare_node, 10_000)
+
       {reason, :error} ->
         Logger.error(
           "Error while preparing to start sheduler (request #{inspect(reason)} data from network), repeating in 10 seconds again!"
         )
 
-        Process.send_after(self(), :prepare_node, 10_000)
+        Process.send_after(master_sheduler, :prepare_node, 10_000)
 
       {:error, :no_round_specification_in_cache} ->
         Logger.error(
           "Error while preparing to start sheduler (no round_specification in cache), repeating in 10 seconds again!"
         )
 
-        Process.send_after(self(), :prepare_node, 10_000)
+        Process.send_after(master_sheduler, :prepare_node, 10_000)
     end
-
-    {:noreply, state}
   end
 
-  def handle_info(:next_round, state) do
+  def handle_event(:next_round, _master_sheduler) do
     Logger.info("-> Start a new round")
     round_specification = get_round_specification()
     Logger.debug("Round: #{inspect(round_specification)}")
@@ -118,11 +123,9 @@ defmodule Kniffel.Sheduler do
           Timex.format!(next_round.round_begin, "{ISO:Extended}")
       )
     end
-
-    {:noreply, state}
   end
 
-  def handle_info(:propose_block, state) do
+  def handle_event(:propose_block, _master_sheduler) do
     Logger.info("--- Propose a new block")
 
     case Kniffel.Blockchain.propose_new_block() do
@@ -132,11 +135,9 @@ defmodule Kniffel.Sheduler do
       {:error, :no_transactions} ->
         cancel_block_propose(:no_transaction)
     end
-
-    {:noreply, state}
   end
 
-  def handle_info(:commit_block, state) do
+  def handle_event(:commit_block, _master_sheduler) do
     Logger.info("--- Commit a new block")
 
     case Kniffel.Blockchain.commit_new_block() do
@@ -146,26 +147,21 @@ defmodule Kniffel.Sheduler do
       {:error, :no_propose_for_block} ->
         cancel_block_commit(:not_valid)
     end
-
-    {:noreply, state}
   end
 
-  def handle_info(:finalize_block, state) do
+  def handle_event(:finalize_block, _master_sheduler) do
     Logger.info("--- Finalize new block")
     Kniffel.Blockchain.finalize_block()
-    {:noreply, state}
   end
 
-  def handle_info(:cancel_block_propose, state) do
+  def handle_event(:cancel_block_propose, _master_sheduler) do
     Logger.info("--- Cancel block propose (timeout)")
     cancel_block_propose(:timeout)
-    {:noreply, state}
   end
 
-  def handle_info(:cancel_block_commit, state) do
+  def handle_event(:cancel_block_commit, _master_sheduler) do
     Logger.info("--- Cancel block commit (timeout)")
     cancel_block_commit(:timeout)
-    {:noreply, state}
   end
 
   # ----------------------------------------------------------------------------

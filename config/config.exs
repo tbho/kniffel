@@ -12,7 +12,7 @@ config :kniffel,
 
 config :kniffel, Kniffel.Repo,
   pool_size: 10,
-  log: :false
+  log: false
 
 # Configures the endpoint
 config :kniffel, KniffelWeb.Endpoint,
