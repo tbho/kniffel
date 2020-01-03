@@ -35,7 +35,6 @@ case Server.get_server(id) do
       "public_key" => pem_string,
       "authority" => false,
       "id" => id
-
     })
     |> Repo.insert()
 end
