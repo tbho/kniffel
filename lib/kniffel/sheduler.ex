@@ -510,7 +510,7 @@ defmodule Kniffel.Sheduler do
         "timeout" ->
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
-               true = incoming_round_number == round_number,
+               true <- incoming_round_number >= round_number,
                cancel_time <- get_round_time(round_specification, :cancel_block_propose),
                1 <- Timex.compare(Timex.now(), cancel_time) do
             Enum.map(
@@ -542,7 +542,7 @@ defmodule Kniffel.Sheduler do
           else
             0 -> :error
             -1 -> :error
-            false -> :error
+            false -> :ok
           end
 
         "not_valid" ->
@@ -578,7 +578,7 @@ defmodule Kniffel.Sheduler do
         "timeout" ->
           # compare DateTime.now() to round_times
           with %{round_number: round_number} = round_specification <- get_round_specification(),
-               true = incoming_round_number == round_number,
+               true <- incoming_round_number >= round_number,
                cancel_time <- get_round_time(round_specification, :cancel_block_commit),
                1 <- Timex.compare(Timex.now(), cancel_time) do
             Enum.map(
@@ -610,10 +610,8 @@ defmodule Kniffel.Sheduler do
           else
             0 -> :error
             -1 -> :error
-            false -> :error
+            false -> :ok
           end
-
-          :ok
 
         "not_valid" ->
           # cancel timers and wait for next round
