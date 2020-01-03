@@ -154,14 +154,14 @@ defmodule Kniffel.Sheduler do
     Kniffel.Blockchain.finalize_block()
   end
 
-  def handle_event(:cancel_block_propose, master_sheduler) do
+  def handle_event(:cancel_block_propose, _master_sheduler) do
     Logger.info("--- Cancel block propose (timeout)")
-    cancel_block_propose(:timeout, master_sheduler)
+    cancel_block_propose(:timeout)
   end
 
-  def handle_event(:cancel_block_commit, master_sheduler) do
+  def handle_event(:cancel_block_commit, _master_sheduler) do
     Logger.info("--- Cancel block commit (timeout)")
-    cancel_block_commit(:timeout, master_sheduler)
+    cancel_block_commit(:timeout)
   end
 
   # ----------------------------------------------------------------------------
