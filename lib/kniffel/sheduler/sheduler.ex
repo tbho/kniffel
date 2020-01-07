@@ -5,8 +5,9 @@ defmodule Kniffel.Sheduler do
   @round_offset 2
 
   use GenServer
-  alias Kniffel.{Server, Blockchain, Blockchain.Crypto, Blockchain.Block.ServerAge}
-  alias DateTime
+  alias Kniffel.{Server, Blockchain}
+  alias Kniffel.Blockchain.Crypto
+  alias Kniffel.Sheduler.{RoundSpecification, ServerAge}
   require Logger
 
   def start_link(state) do
@@ -29,28 +30,31 @@ defmodule Kniffel.Sheduler do
     with {:height, :ok} <- {:height, Blockchain.compare_block_height_with_network()},
          # compare blocks with other servers (get server adress without adding server to network)
          {:round_specification, r} when r in [:ok, :default] <-
-           {:round_specification, request_round_specification_from_network()},
+           {:round_specification, RoundSpecification.request_round_specification_from_network()},
          # get the round_specification for next round from master_nodes
          {:master, :ok} <- {:master, Server.add_this_server_to_master_server()},
          # add server to network
          {:server_age, a} when a in [:ok, :default] <-
-           {:server_age, request_server_age_from_network()},
+           {:server_age, ServerAge.request_server_age_from_network()},
          # get server_age from network
-         %{} = round_specification <- get_round_specification() do
+         %{} = round_specification <- RoundSpecification.get_next_round_specification() do
       # calculate diff (in milliseconds) till start of new round
       Logger.debug("Starting with: #{inspect(round_specification)}")
 
       diff_milliseconds =
         round_specification
-        |> get_round_time(:round_begin)
-        |> calculate_diff_to_now
+        |> RoundSpecification.get_round_time(:round_begin)
+        |> RoundSpecification.calculate_diff_to_now()
 
       # shedule new round
       Process.send_after(master_sheduler, :next_round, diff_milliseconds)
 
       Logger.info(
         "-✓ Started sheduler successful! First round will start at: " <>
-          Timex.format!(get_round_time(round_specification, :round_begin), "{ISO:Extended}")
+          Timex.format!(
+            RoundSpecification.get_round_time(round_specification, :round_begin),
+            "{ISO:Extended}"
+          )
       )
     else
       {:master, {:error, message}} ->
@@ -80,7 +84,8 @@ defmodule Kniffel.Sheduler do
 
   def handle_event(:next_round, master_sheduler) do
     Logger.info("-> Start a new round")
-    round_specification = get_round_specification()
+    RoundSpecification.start_new_round()
+    round_specification = RoundSpecification.get_round_specification()
     # get other master nodes
     servers = Server.get_authorized_servers(false)
 
@@ -117,7 +122,9 @@ defmodule Kniffel.Sheduler do
     else
       Logger.info("--- No other master node found! I will shedule a new round and try again.")
       # if no other server in network save new round specification
-      next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
+      next_round =
+        Kniffel.Cache.set(:round_specification, RoundSpecification.get_next_round_specification())
+
       # schedule the new round
       schedule(round_specification, :next_round, master_sheduler)
 
@@ -173,10 +180,14 @@ defmodule Kniffel.Sheduler do
 
   def schedule(round_specification, type, process) do
     cache_atom = (Atom.to_string(type) <> "_timer") |> String.to_atom()
-    time = get_round_time(round_specification, type)
+    time = RoundSpecification.get_round_time(round_specification, type)
 
-    timer = Process.send_after(process, type, calculate_diff_to_now(time))
-    Kniffel.Cache.set(cache_atom, timer, ttl: calculate_diff_to_now(time, :seconds))
+    timer = Process.send_after(process, type, RoundSpecification.calculate_diff_to_now(time))
+
+    Kniffel.Cache.set(cache_atom, timer,
+      ttl: RoundSpecification.calculate_diff_to_now(time, :seconds)
+    )
+
     round_specification
   end
 
@@ -208,227 +219,14 @@ defmodule Kniffel.Sheduler do
     end
   end
 
-  defp get_round_time(%{round_begin: round_begin}, :round_begin) do
-    round_begin
-  end
-
-  defp get_round_time(%{round_begin: round_begin, round_length: round_length}, :next_round) do
-    duration = Timex.Duration.from_seconds(round_length + @round_offset)
-    Timex.add(round_begin, duration)
-  end
-
-  defp get_round_time(%{round_begin: round_begin, round_length: round_length}, :propose_block) do
-    duration =
-      round_length
-      |> Timex.Duration.from_seconds()
-      |> Timex.Duration.scale(1 / 3)
-
-    Timex.add(round_begin, duration)
-  end
-
-  defp get_round_time(%{round_begin: round_begin, round_length: round_length}, :commit_block) do
-    duration =
-      round_length
-      |> Timex.Duration.from_seconds()
-      |> Timex.Duration.scale(2 / 3)
-
-    Timex.add(round_begin, duration)
-  end
-
-  defp get_round_time(round_specification, :cancel_block_propose),
-    do: get_round_time(round_specification, :propose_block)
-
-  defp get_round_time(round_specification, :cancel_block_commit),
-    do: get_round_time(round_specification, :commit_block)
-
-  defp get_round_time(_round_specification, _name), do: nil
-
-  defp calculate_diff_to_now(time, unit \\ :milliseconds) do
-    Timex.diff(time, Timex.now(), unit)
-  end
-
-  defp get_round_specification() do
-    case Kniffel.Cache.get(:round_specification) do
-      %{
-        round_length: _round_length,
-        round_number: _round_number,
-        round_begin: _round_begin
-      } = round_specification ->
-        round_specification
-
-      nil ->
-        {:error, :no_round_specification_in_cache}
-    end
-  end
-
-  defp get_default_round_specification() do
-    time_now =
-      Timex.add(
-        Timex.now(),
-        Timex.Duration.from_seconds(@default_round_length + @round_offset)
-      )
-
-    %{
-      round_length: @default_round_length,
-      round_begin: time_now,
-      round_number: 1
-    }
-  end
-
-  defp request_round_specification_from_network() do
-    servers = Server.get_authorized_servers(false)
-
-    round_specification_responses =
-      Enum.reduce(servers, [], fn server, result ->
-        with {:ok, %{"round_response" => round_response}} <-
-               Kniffel.Request.get(server.url <> "/api/sheduler/next_round") do
-          {:ok, round_begin} = Timex.parse(round_response["round_begin"], "{ISO:Extended}")
-
-          case Timex.compare(Timex.now(), round_begin) do
-            -1 ->
-              result ++
-                [
-                  %{
-                    round_length: round_response["round_length"],
-                    round_begin: round_begin,
-                    round_number: round_response["round_number"]
-                  }
-                ]
-
-            0 ->
-              result
-
-            1 ->
-              result
-          end
-        else
-          {:ok, %{"error" => error}} ->
-            Logger.error(error)
-            result
-
-          {:error, error} ->
-            Logger.error(error)
-            result
-        end
-      end)
-
-    # if no server is in network empty list is returned
-    # otherwise answers will be grouped and answer with highest count is choosen
-    with false <- Enum.empty?(round_specification_responses),
-         uniq_specs <- Enum.uniq(round_specification_responses),
-         grouped_specs <-
-           Enum.map(uniq_specs, fn uniq_spec ->
-             {uniq_spec, Enum.count(round_specification_responses, &(uniq_spec == &1))}
-           end),
-         sort_specs <- Enum.sort_by(grouped_specs, &elem(&1, 1), &>=/2) do
-      {round_specification, _count} = List.first(sort_specs)
-      Logger.debug("got round_specification from network: #{inspect(round_specification)}")
-
-      if round_specification do
-        Kniffel.Cache.set(:round_specification, round_specification)
-        :ok
-      else
-        round_specification = get_default_round_specification()
-
-        Logger.debug(
-          "round_specification from network is nil, setting default now: #{
-            inspect(round_specification)
-          }"
-        )
-
-        Kniffel.Cache.set(:round_specification, round_specification)
-        :default
-      end
-    else
-      true ->
-        round_specification = get_default_round_specification()
-
-        Logger.debug(
-          "no round_specifications recieved from network, setting default now: #{
-            inspect(round_specification)
-          }"
-        )
-
-        Kniffel.Cache.set(:round_specification, round_specification)
-        :default
-    end
-  end
-
-  def request_server_age_from_network() do
-    servers = Server.get_authorized_servers(false)
-
-    server_age_responses =
-      Enum.reduce(servers, [], fn server, result ->
-        with {:ok, %{"server_age" => server_age}} <-
-               Kniffel.Request.get(server.url <> "/api/sheduler/server_age") do
-          ages = Enum.map(server_age["ages"], fn {server_id, age} -> {server_id, age} end)
-
-          offsets =
-            Enum.map(server_age["offsets"], fn {server_id, offset} -> {server_id, offset} end)
-
-          result ++
-            [%{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}]
-        else
-          {:ok, %{"error" => _error}} ->
-            result
-
-          {:error, _error} ->
-            result
-        end
-      end)
-
-    # if no server is in network empty list is returned
-    # otherwise answers will be grouped and answer with highest count is choosen
-    with false <- Enum.empty?(server_age_responses),
-         unique_ages <- Enum.uniq(server_age_responses),
-         grouped_ages <-
-           Enum.map(unique_ages, fn unique_age ->
-             {unique_age, Enum.count(server_age_responses, &(unique_age == &1))}
-           end),
-         sort_ages <- Enum.sort_by(grouped_ages, &elem(&1, 1), &>=/2) do
-      {server_age, _count} = List.first(sort_ages)
-
-      if server_age do
-        Logger.debug("got round_specification from network: #{inspect(server_age)}")
-        Kniffel.Cache.set(:server_age, server_age)
-        :ok
-      else
-        Logger.debug("server_age from network is nil")
-        ServerAge.get_server_age()
-        :default
-      end
-    else
-      true ->
-        Logger.debug("no server_age recieved from network")
-        ServerAge.get_server_age()
-        :default
-    end
-  end
-
   # ----------------------------------------------------------------------------
   # ---  Network - Control - Methods ---
   # ----------------------------------------------------------------------------
 
-  def get_next_round_specification() do
-    with %{
-           round_length: round_length,
-           round_number: round_number
-         } = round_specification <- Kniffel.Cache.get(:round_specification) do
-      new_round_begin = get_round_time(round_specification, :next_round)
-
-      %{
-        round_length: round_length,
-        round_begin: new_round_begin,
-        round_number: round_number + 1
-      }
-    else
-      nil ->
-        {:error, :no_round_specification_in_cache}
-    end
-  end
-
   def cancel_block_propose(reason) do
-    %{round_number: round_number} = round_specification = get_round_specification()
+    %{round_number: round_number} =
+      round_specification = RoundSpecification.get_round_specification()
+
     this_server = Server.get_this_server()
 
     data = %{
@@ -446,7 +244,7 @@ defmodule Kniffel.Sheduler do
 
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
-        {:ok, %{"cancel_block_propose_response" => :ok}} =
+        {:ok, %{"cancel_block_propose_response" => "ok"}} =
           Kniffel.Request.post(server.url <> "/api/sheduler/cancel_block_propose", %{
             cancel_block_propose: Map.put(data, :signature, signature)
           })
@@ -455,7 +253,9 @@ defmodule Kniffel.Sheduler do
   end
 
   def cancel_block_commit(reason) do
-    %{round_number: round_number} = round_specification = get_round_specification()
+    %{round_number: round_number} =
+      round_specification = RoundSpecification.get_round_specification()
+
     this_server = Server.get_this_server()
 
     data = %{
@@ -473,7 +273,7 @@ defmodule Kniffel.Sheduler do
 
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
-        {:ok, %{"cancel_block_commit_response" => :ok}} =
+        {:ok, %{"cancel_block_commit_response" => "ok"}} =
           Kniffel.Request.post(server.url <> "/api/sheduler/cancel_block_commit", %{
             cancel_block_commit: Map.put(data, :signature, signature)
           })
@@ -509,9 +309,11 @@ defmodule Kniffel.Sheduler do
 
         "timeout" ->
           # compare DateTime.now() to round_times
-          with %{round_number: round_number} = round_specification <- get_round_specification(),
+          with %{round_number: round_number} = round_specification <-
+                 RoundSpecification.get_round_specification(),
                true <- incoming_round_number >= round_number,
-               cancel_time <- get_round_time(round_specification, :cancel_block_propose),
+               cancel_time <-
+                 RoundSpecification.get_round_time(round_specification, :cancel_block_propose),
                1 <- Timex.compare(Timex.now(), cancel_time) do
             Enum.map(
               [
@@ -524,12 +326,15 @@ defmodule Kniffel.Sheduler do
               &cancel_timer(&1)
             )
 
-            Logger.info(
-              "--- Recieved cancel block propose request! Reason: " <> Atom.to_string(reason)
-            )
+            Logger.info("--- Recieved cancel block propose request! Reason: " <> reason)
 
             # if no other server in network save new round specification
-            next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
+            next_round =
+              Kniffel.Cache.set(
+                :round_specification,
+                RoundSpecification.get_next_round_specification()
+              )
+
             # schedule the new round
             schedule(round_specification, :next_round, self())
 
@@ -577,9 +382,11 @@ defmodule Kniffel.Sheduler do
       case reason do
         "timeout" ->
           # compare DateTime.now() to round_times
-          with %{round_number: round_number} = round_specification <- get_round_specification(),
+          with %{round_number: round_number} = round_specification <-
+                 RoundSpecification.get_round_specification(),
                true <- incoming_round_number >= round_number,
-               cancel_time <- get_round_time(round_specification, :cancel_block_commit),
+               cancel_time <-
+                 RoundSpecification.get_round_time(round_specification, :cancel_block_commit),
                1 <- Timex.compare(Timex.now(), cancel_time) do
             Enum.map(
               [
@@ -592,12 +399,15 @@ defmodule Kniffel.Sheduler do
               &cancel_timer(&1)
             )
 
-            Logger.info(
-              "--- Recieved cancel block propose request! Reason: " <> Atom.to_string(reason)
-            )
+            Logger.info("--- Recieved cancel block propose request! Reason: " <> reason)
 
             # if no other server in network save new round specification
-            next_round = Kniffel.Cache.set(:round_specification, get_next_round_specification())
+            next_round =
+              Kniffel.Cache.set(
+                :round_specification,
+                RoundSpecification.get_next_round_specification()
+              )
+
             # schedule the new round
             schedule(round_specification, :next_round, self())
 

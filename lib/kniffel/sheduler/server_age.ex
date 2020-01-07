@@ -1,10 +1,11 @@
-defmodule Kniffel.Blockchain.Block.ServerAge do
-  alias Kniffel.Blockchain.{Block, Block.ServerAge}
-  alias Kniffel.Server
+defmodule Kniffel.Sheduler.ServerAge do
+  alias Kniffel.{Repo, Server}
+  alias Kniffel.Blockchain.{Block}
+  alias Kniffel.Sheduler.ServerAge
 
   import Ecto.Query, warn: false
 
-  alias Kniffel.Repo
+  require Logger
 
   @age_calculation_select_limit 10
 
@@ -140,6 +141,57 @@ defmodule Kniffel.Blockchain.Block.ServerAge do
         end)
 
       position
+    end
+  end
+
+  def request_server_age_from_network() do
+    servers = Server.get_authorized_servers(false)
+
+    server_age_responses =
+      Enum.reduce(servers, [], fn server, result ->
+        with {:ok, %{"server_age" => server_age}} <-
+               Kniffel.Request.get(server.url <> "/api/sheduler/server_age") do
+          ages = Enum.map(server_age["ages"], fn {server_id, age} -> {server_id, age} end)
+
+          offsets =
+            Enum.map(server_age["offsets"], fn {server_id, offset} -> {server_id, offset} end)
+
+          result ++
+            [%{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}]
+        else
+          {:ok, %{"error" => _error}} ->
+            result
+
+          {:error, _error} ->
+            result
+        end
+      end)
+
+    # if no server is in network empty list is returned
+    # otherwise answers will be grouped and answer with highest count is choosen
+    with false <- Enum.empty?(server_age_responses),
+         unique_ages <- Enum.uniq(server_age_responses),
+         grouped_ages <-
+           Enum.map(unique_ages, fn unique_age ->
+             {unique_age, Enum.count(server_age_responses, &(unique_age == &1))}
+           end),
+         sort_ages <- Enum.sort_by(grouped_ages, &elem(&1, 1), &>=/2) do
+      {server_age, _count} = List.first(sort_ages)
+
+      if server_age do
+        Logger.debug("got server_ages from network: #{inspect(server_age)}")
+        Kniffel.Cache.set(:server_age, server_age)
+        :ok
+      else
+        Logger.debug("server_age from network is nil")
+        ServerAge.get_server_age()
+        :default
+      end
+    else
+      true ->
+        Logger.debug("no server_age recieved from network")
+        ServerAge.get_server_age()
+        :default
     end
   end
 end

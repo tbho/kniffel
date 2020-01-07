@@ -4,7 +4,7 @@ defmodule KniffelWeb.ShedulerController do
   alias Kniffel.Sheduler
 
   def next_round(conn, _attrs) do
-    case Kniffel.Sheduler.get_next_round_specification() do
+    case Kniffel.Sheduler.RoundSpecification.get_next_round_specification() do
       {:error, message} ->
         json(conn, %{error: message})
 
