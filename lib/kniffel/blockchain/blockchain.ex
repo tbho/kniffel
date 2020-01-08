@@ -670,7 +670,7 @@ defmodule Kniffel.Blockchain do
           end
 
         if transaction.signature == transaction_params["signature"] do
-          transaction.signature
+          transaction
         else
           nil
         end
