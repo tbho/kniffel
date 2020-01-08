@@ -660,12 +660,19 @@ defmodule Kniffel.Blockchain do
 
     transactions =
       Enum.map(data["transactions"], fn transaction_params ->
-        transaction = get_transaction(transaction_params["id"])
+        transaction =
+        case get_transaction(transaction_params["id"]) do
+          %Transaction{} = transaction ->
+            transaction
+
+          nil ->
+            get_transaction_from_server(transaction_params["id"], server.url)
+        end
 
         if transaction.signature == transaction_params["signature"] do
-          transaction
+          transaction.signature
         else
-          get_transaction_from_server(transaction_params["id"], server_id)
+          nil
         end
       end)
 
