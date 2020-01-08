@@ -101,14 +101,18 @@ defmodule Kniffel.Scheduler.RoundSpecification do
   def calculate_next_round_specification(
         %RoundSpecification{
           round_length: round_length,
-          round_number: round_number
+          round_number: round_number,
+          round_begin: round_begin
         } = round_specification
       ) do
-    new_round_begin = get_round_time(round_specification, :next_round)
+
+    duration =
+      round_length + @round_offset
+      |> Timex.Duration.from_seconds()
 
     %RoundSpecification{
       round_length: round_length,
-      round_begin: new_round_begin,
+      round_begin: Timex.add(round_begin, duration),
       round_number: round_number + 1
     }
   end
@@ -116,9 +120,8 @@ defmodule Kniffel.Scheduler.RoundSpecification do
   def start_new_round() do
     Logger.debug("--- Set next round_specification")
     with %RoundSpecification{} = next_round_specification <- get_next_round_specification() do
-      Logger.debug(inspect(next_round_specification))
-      set_round_specification(next_round_specification) |> IO.inspect
-      set_next_round_specification(next_round_specification) |> IO.inspect
+      set_round_specification(next_round_specification)
+      set_next_round_specification(next_round_specification)
     else
       other ->
         other

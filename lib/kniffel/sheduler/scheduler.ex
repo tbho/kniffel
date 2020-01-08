@@ -188,7 +188,7 @@ defmodule Kniffel.Scheduler do
 
   def schedule(round_specification, type, process) do
     cache_atom = (Atom.to_string(type) <> "_timer") |> String.to_atom()
-    time = RoundSpecification.get_round_time(round_specification, type) |> IO.inspect
+    time = RoundSpecification.get_round_time(round_specification, type)
 
     timer = Process.send_after(process, type, RoundSpecification.calculate_diff_to_now(time))
 
