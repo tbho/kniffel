@@ -92,15 +92,11 @@ defmodule Kniffel.Scheduler.RoundSpecification do
     round_specification
   end
 
-  def set_next_round_specification(other), do: :error
-
   def set_next_round_specification(%RoundSpecification{} = round_specification) do
     round_specification = calculate_next_round_specification(round_specification)
     Kniffel.Cache.set(:next_round_specification, round_specification)
     round_specification
   end
-
-  def set_next_round_specification(other), do: :error
 
   def calculate_next_round_specification(
         %RoundSpecification{
