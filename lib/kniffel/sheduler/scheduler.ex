@@ -22,13 +22,13 @@ defmodule Kniffel.Scheduler do
   def handle_event(:prepare_node) do
     Logger.info("-# Prepare and start sheduler")
 
-    with {:height, :ok} <- {:height, Blockchain.compare_block_height_with_network()},
+    with {:master, :ok} <- {:master, Server.add_this_server_to_master_server()},
+         # add server to network
+         {:height, :ok} <- {:height, Blockchain.compare_block_height_with_network()},
          # compare blocks with other servers (get server adress without adding server to network)
          {:round_specification, r} when r in [:ok, :default] <-
            {:round_specification, RoundSpecification.request_round_specification_from_network()},
          # get the round_specification for next round from master_nodes
-         {:master, :ok} <- {:master, Server.add_this_server_to_master_server()},
-         # add server to network
          {:server_age, a} when a in [:ok, :default] <-
            {:server_age, ServerAge.request_server_age_from_network()},
          # get server_age from network
@@ -183,12 +183,18 @@ defmodule Kniffel.Scheduler do
     case read_timer(type) do
       false ->
         timer =
-        Process.send_after(Kniffel.Scheduler, type, RoundSpecification.calculate_diff_to_now(time))
+          Process.send_after(
+            Kniffel.Scheduler,
+            type,
+            RoundSpecification.calculate_diff_to_now(time)
+          )
 
         Kniffel.Cache.set(cache_atom, timer,
           ttl: RoundSpecification.calculate_diff_to_now(time, :seconds)
         )
+
         :ok
+
       time when is_integer(time) ->
         Logger.debug("Timer " <> inspect(type) <> " still runnning!")
     end

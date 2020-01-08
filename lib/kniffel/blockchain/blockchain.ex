@@ -126,6 +126,7 @@ defmodule Kniffel.Blockchain do
         else
           {:error, message} ->
             Logger.debug(message)
+
           false ->
             {:error, :server_id_does_not_match}
         end
@@ -579,7 +580,7 @@ defmodule Kniffel.Blockchain do
   end
 
   defp request_and_insert_block_from_server(server_id, block_index) do
-    server = Server.get_server(server_id)
+    server = Server.get_server(server_id) |> IO.inspect()
 
     with {:ok, %{"block" => block_response}} <-
            Kniffel.Request.get(server.url <> "/api/blocks/#{block_index}"),
@@ -602,27 +603,28 @@ defmodule Kniffel.Blockchain do
     else
       {:index, false} ->
         IO.inspect("index is not right!")
+
         if last_block.index > index do
           IO.inspect("last_block index is higher")
           # if last_block is higher delete blocks with higher index and
           # mark all transactions as not in block
-          set_transaction_ids_to_nil_for_blocks_with_higher_index(index) |> IO.inspect
-          delete_block_with_higher_index(index) |> IO.inspect
+          set_transaction_ids_to_nil_for_blocks_with_higher_index(index) |> IO.inspect()
+          delete_block_with_higher_index(index) |> IO.inspect()
 
-          insert_block_from_network(block_params) |> IO.inspect
+          insert_block_from_network(block_params) |> IO.inspect()
         else
           IO.inspect("last_block index is lower")
-          request_and_insert_block_from_server(server_id, last_block.index - 1) |> IO.inspect
-          insert_block_from_network(block_params) |> IO.inspect
+          request_and_insert_block_from_server(server_id, last_block.index - 1) |> IO.inspect()
+          insert_block_from_network(block_params) |> IO.inspect()
         end
 
       {:hash, false} ->
         # delete last block and mark transactions as not in block
-        set_transaction_ids_to_nil_for_block(index) |> IO.inspect
-        delete_block(last_block) |> IO.inspect
+        set_transaction_ids_to_nil_for_block(index) |> IO.inspect()
+        delete_block(last_block) |> IO.inspect()
 
         # insert new block
-        insert_block_network(block_params) |> IO.inspect
+        insert_block_network(block_params) |> IO.inspect()
     end
   end
 
