@@ -601,7 +601,9 @@ defmodule Kniffel.Blockchain do
       :ok
     else
       {:index, false} ->
+        IO.inspect("index is not right!")
         if last_block.index > index do
+          IO.inspect("last_block index is higher")
           # if last_block is higher delete blocks with higher index and
           # mark all transactions as not in block
           set_transaction_ids_to_nil_for_blocks_with_higher_index(index) |> IO.inspect
@@ -609,8 +611,9 @@ defmodule Kniffel.Blockchain do
 
           insert_block_from_network(block_params) |> IO.inspect
         else
+          IO.inspect("last_block index is lower")
+          request_and_insert_block_from_server(server_id, last_block.index - 1) |> IO.inspect
           insert_block_from_network(block_params) |> IO.inspect
-          request_and_insert_block_from_server(server_id, last_block.index + 1) |> IO.inspect
         end
 
       {:hash, false} ->
