@@ -189,7 +189,7 @@ defmodule Kniffel.Blockchain do
         end
 
       true = transaction.signature == propose_transaction.signature
-      true = DateTime.to_string(transaction.timestamp) == propose_transaction.timestamp
+      true = transaction.timestamp == propose_transaction.timestamp
 
       transaction
     end)
@@ -203,7 +203,7 @@ defmodule Kniffel.Blockchain do
 
     propose_response = Kniffel.Cache.take({:propose_response, block_index: last_block.index + 1})
 
-    if !is_nil(propose) do
+    if !is_nil(propose) && !is_nil(propose_response) do
       true = propose.pre_hash == last_block.hash
       true = propose.block_index == last_block.index + 1
       true = propose.server_id == Server.get_this_server().id
