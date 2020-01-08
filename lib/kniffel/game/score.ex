@@ -97,7 +97,7 @@ defmodule Kniffel.Game.Score do
       {:ok, timestamp} = DateTime.from_naive(timestamp, "Etc/UTC")
 
       case Crypto.verify(
-             Poison.encode!(%{"dices" => dices, "timestamp" => Timex.format!(timestamp, "{ISO:Extended}")}),
+             Poison.encode!(%{"dices" => dices, "timestamp" => Timex.format!(timestamp, "{ISO:Extended}")}) |> IO.inspect,
              server.public_key,
              signature
            ) do

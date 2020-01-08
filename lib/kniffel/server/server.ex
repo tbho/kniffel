@@ -192,7 +192,7 @@ defmodule Kniffel.Server do
       timestamp = Timex.now() |> Timex.format!("{ISO:Extended}")
 
       signature =
-        Poison.encode!(%{"dices" => dices, "timestamp" => timestamp})
+        Poison.encode!(%{"dices" => dices, "timestamp" => timestamp}) |> IO.inspect
         |> Crypto.sign(private_key_pem)
 
       server = get_this_server()
