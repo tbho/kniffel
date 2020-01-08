@@ -115,8 +115,6 @@ defmodule Kniffel.Scheduler.RoundSpecification do
   end
 
   def start_new_round() do
-    Logger.debug("--- Set next round_specification")
-
     with %RoundSpecification{} = next_round_specification <- get_next_round_specification() do
       set_round_specification(next_round_specification)
       set_next_round_specification(next_round_specification)

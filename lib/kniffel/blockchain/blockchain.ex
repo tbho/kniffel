@@ -403,7 +403,7 @@ defmodule Kniffel.Blockchain do
                  round_specification:
                    RoundSpecification.json(RoundSpecification.get_round_specification()),
                  server_age:
-                   ServerAge.calculate_ages_of_servers_from_blockchain()
+                   ServerAge.get_server_age()
                    |> ServerAge.update_server_age()
                }),
                [
