@@ -190,7 +190,7 @@ defmodule Kniffel.Scheduler do
         )
         :ok
       time when is_integer(time) ->
-        Logger.debug("Timer " <> inspect(type) <> " still runnning!"}
+        Logger.debug("Timer " <> inspect(type) <> " still runnning!")
     end
   end
 
