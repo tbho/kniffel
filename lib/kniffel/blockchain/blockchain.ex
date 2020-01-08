@@ -124,6 +124,8 @@ defmodule Kniffel.Blockchain do
 
           propose_response
         else
+          {:error, message} ->
+            Logger.debug(message)
           false ->
             {:error, :server_id_does_not_match}
         end
@@ -182,10 +184,11 @@ defmodule Kniffel.Blockchain do
         transaction =
         case get_transaction(propose_transaction.id) do
           %Transaction{} = transaction ->
-            transaction
+            transaction |> IO.inspect
 
           nil ->
-            get_transaction_from_server(propose_transaction.id, server.url)
+            IO.inspect("transaction is nil")
+            get_transaction_from_server(propose_transaction.id, server.url) |> IO.inspect
         end
 
       true = transaction.signature == propose_transaction.signature
