@@ -615,7 +615,7 @@ defmodule Kniffel.Blockchain do
         else
           IO.inspect("last_block index is lower")
           request_and_insert_block_from_server(server_id, index - 1) |> IO.inspect()
-          insert_block_from_network(block_params) |> IO.inspect()
+          insert_block_network(block_params) |> IO.inspect()
         end
 
       {:hash, false} ->
