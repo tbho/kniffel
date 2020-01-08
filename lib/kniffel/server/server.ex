@@ -189,7 +189,7 @@ defmodule Kniffel.Server do
         end)
         |> Map.new()
 
-      timestamp = Timex.now() |> Timex.format!("{ISO:Extended}")
+      timestamp = Timex.now() |> DateTime.truncate(:second) |> Timex.format!("{ISO:Extended}")
 
       signature =
         Poison.encode!(%{"dices" => dices, "timestamp" => timestamp}) |> IO.inspect
