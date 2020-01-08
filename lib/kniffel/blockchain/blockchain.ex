@@ -338,8 +338,7 @@ defmodule Kniffel.Blockchain do
             propose_response_params
             |> ServerResponse.change()
 
-          {:ok, propose_response} = ServerResponse.verify(propose, propose_response)
-          propose_response
+          %ServerResponse{} = ServerResponse.verify(propose, propose_response)
         end)
         |> Enum.count(&(%ServerResponse{} = &1))
 
