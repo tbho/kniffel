@@ -270,7 +270,7 @@ defmodule Kniffel.Blockchain do
 
         with %{"block_response" => block_response} <- Poison.decode!(response.body),
              %ServerResponse{} = block_response <- ServerResponse.change(block_response),
-             {:ok, block_response} <- ServerResponse.verify(block, block_response),
+             %ServerResponse{} = block_response <- ServerResponse.verify(block, block_response),
              true <- block_response.server_id == server.id do
           results = Kniffel.Cache.get({:propose_response, block_index: propose.block_index}) || []
 
