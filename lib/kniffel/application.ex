@@ -15,7 +15,7 @@ defmodule Kniffel.Application do
       # Start the endpoint when the application starts
       KniffelWeb.Endpoint,
       # Starts the sheduling service for proposal and creation of new blocks
-      Kniffel.Sheduler
+      Kniffel.Scheduler
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

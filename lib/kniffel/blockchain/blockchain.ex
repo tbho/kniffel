@@ -16,6 +16,7 @@ defmodule Kniffel.Blockchain do
   }
 
   alias Kniffel.{Game, Game.Score, User, Server}
+  alias Kniffel.Scheduler.RoundSpecification
 
   require Logger
 
@@ -100,7 +101,11 @@ defmodule Kniffel.Blockchain do
         {:ok, response} =
           HTTPoison.post(
             server.url <> "/api/blocks/propose",
-            Poison.encode!(%{propose: propose}),
+            Poison.encode!(%{
+              propose: propose,
+              round_specification:
+                RoundSpecification.json(RoundSpecification.get_round_specification())
+            }),
             [
               {"Content-Type", "application/json"}
             ]
@@ -251,7 +256,11 @@ defmodule Kniffel.Blockchain do
         {:ok, response} =
           HTTPoison.post(
             server.url <> "/api/blocks/commit",
-            Poison.encode!(%{block: Block.json_encode(block)}),
+            Poison.encode!(%{
+              block: Block.json_encode(block),
+              round_specification:
+                RoundSpecification.json(RoundSpecification.get_round_specification())
+            }),
             [
               {"Content-Type", "application/json"}
             ]
@@ -391,7 +400,12 @@ defmodule Kniffel.Blockchain do
                    timestamp: block.timestamp,
                    server_id: this_server.id,
                    hash: block.hash
-                 }
+                 },
+                 round_specification:
+                   RoundSpecification.json(RoundSpecification.get_round_specification()),
+                 server_age:
+                   ServerAge.calculate_ages_of_servers_from_blockchain()
+                   |> ServerAge.update_server_age()
                }),
                [
                  {"Content-Type", "application/json"}
@@ -399,7 +413,7 @@ defmodule Kniffel.Blockchain do
              ) do
       else
         {:ok, :blocks_do_not_match} ->
-          compare_block_height_with_network()
+          nil
 
         {:error, _} ->
           nil

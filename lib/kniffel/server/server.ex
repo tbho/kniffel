@@ -152,7 +152,7 @@ defmodule Kniffel.Server do
           )
         end)
 
-        Kniffel.Blockchain.Block.ServerAge.get_server_age(true) |> IO.inspect()
+        Kniffel.Blockchain.Block.ServerAge.get_server_age(true)
       end
 
       {:ok, server}

@@ -1,7 +1,9 @@
 defmodule KniffelWeb.BlockController do
   use KniffelWeb, :controller
 
-  alias Kniffel.{Blockchain, Blockchain.Block.Propose, Blockchain.Block.ServerResponse, Server}
+  alias Kniffel.{Blockchain, Server, Scheduler}
+  alias Kniffel.Scheduler.{RoundSpecification}
+  alias Kniffel.Blockchain.Block.{Propose, ServerResponse}
 
   def index(conn, _params) do
     blocks = Blockchain.get_blocks()
@@ -13,22 +15,58 @@ defmodule KniffelWeb.BlockController do
     render(conn, "show.json", block: block)
   end
 
-  def propose(conn, %{"propose" => propose}) do
-    propose_response =
-      propose
-      |> Propose.change()
-      |> Blockchain.validate_block_proposal()
+  def propose(conn, %{"propose" => propose, "round_specification" => round_specification}) do
+    Scheduler.cancel_timer(:cancel_block_propose)
 
-    json(conn, %{propose_response: ServerResponse.json(propose_response)})
+    %{round_number: round_number} = RoundSpecification.get_round_specification()
+
+    if round_number == round_specification["round_number"] do
+      propose_response =
+        propose
+        |> Propose.change()
+        |> Blockchain.validate_block_proposal()
+
+      json(conn, %{propose_response: ServerResponse.json(propose_response)})
+    else
+      error_response =
+        Map.new()
+        |> Map.put(:error, :wrong_round_number)
+        |> Map.put(:server, Server.get_this_server())
+        |> ServerResponse.change()
+
+      json(conn, %{propose_response: ServerResponse.json(error_response)})
+    end
   end
 
-  def commit(conn, %{"block" => block_params}) do
-    block_response = Blockchain.insert_block(block_params)
-    json(conn, %{block_response: ServerResponse.json(block_response)})
+  def commit(conn, %{"block" => block_params, "round_specification" => round_specification}) do
+    Scheduler.cancel_timer(:cancel_block_commit)
+
+    %{round_number: round_number} = RoundSpecification.get_round_specification()
+
+    if round_number == round_specification["round_number"] do
+      block_response = Blockchain.insert_block(block_params)
+      json(conn, %{block_response: ServerResponse.json(block_response)})
+    else
+      error_response =
+        Map.new()
+        |> Map.put(:error, :wrong_round_number)
+        |> Map.put(:server, Server.get_this_server())
+        |> ServerResponse.change()
+
+      json(conn, %{propose_response: ServerResponse.json(error_response)})
+    end
   end
 
-  def finalize(conn, %{"block_height" => height_params}) do
+  def finalize(conn, %{
+        "block_height" => height_params,
+        "round_specification" => round_specification,
+        "server_age" => server_age
+      }) do
     {:ok, block} = Blockchain.handle_height_change(height_params)
+
+    # TODO: compare server_ages
+    # TODO: shedule_next_round
+    Scheduler.schedule(RoundSpecification.cast(round_specification), :next_round)
     render(conn, "show.json", block: block)
   end
 

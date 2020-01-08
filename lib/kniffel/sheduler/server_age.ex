@@ -1,7 +1,7 @@
-defmodule Kniffel.Sheduler.ServerAge do
+defmodule Kniffel.Scheduler.ServerAge do
   alias Kniffel.{Repo, Server}
   alias Kniffel.Blockchain.{Block}
-  alias Kniffel.Sheduler.ServerAge
+  alias Kniffel.Scheduler.ServerAge
 
   import Ecto.Query, warn: false
 
@@ -126,7 +126,7 @@ defmodule Kniffel.Sheduler.ServerAge do
 
   def get_position_in_server_queue(server_id) do
     with server_age when not is_nil(server_age) <- get_server_age(),
-         server_ages <- Enum.sort_by(server_age.ages, &elem(&1, 1), &>=/2) do
+         server_ages <- Enum.sort_by(server_age.ages, &elem(&1, 1), &<=/2) do
       {position, _changed} =
         Enum.reduce(server_ages, {1, false}, fn
           _position_result, {position, true} ->

@@ -1,7 +1,6 @@
-defmodule Kniffel.Sheduler.RoundSpecification do
-
+defmodule Kniffel.Scheduler.RoundSpecification do
   alias Kniffel.Server
-  alias Kniffel.Sheduler.RoundSpecification
+  alias Kniffel.Scheduler.RoundSpecification
   require Logger
 
   # in seconds
@@ -22,11 +21,10 @@ defmodule Kniffel.Sheduler.RoundSpecification do
   end
 
   def get_round_time(
-        %RoundSpecification{round_begin: round_begin, round_length: round_length},
+        %RoundSpecification{round_begin: round_begin},
         :next_round
       ) do
-    duration = Timex.Duration.from_seconds(round_length + @round_offset)
-    Timex.add(round_begin, duration)
+    round_begin
   end
 
   def get_round_time(
@@ -49,6 +47,17 @@ defmodule Kniffel.Sheduler.RoundSpecification do
       round_length
       |> Timex.Duration.from_seconds()
       |> Timex.Duration.scale(2 / 3)
+
+    Timex.add(round_begin, duration)
+  end
+
+  def get_round_time(
+        %RoundSpecification{round_begin: round_begin, round_length: round_length},
+        :finalize_block
+      ) do
+    duration =
+      round_length
+      |> Timex.Duration.from_seconds()
 
     Timex.add(round_begin, duration)
   end
@@ -208,6 +217,24 @@ defmodule Kniffel.Sheduler.RoundSpecification do
       round_length: @default_round_length,
       round_begin: time_now,
       round_number: 1
+    }
+  end
+
+  def cast(params) do
+    {:ok, round_begin} = Timex.parse(params["round_begin"], "{ISO:Extended}")
+
+    %RoundSpecification{
+      round_length: params["round_length"],
+      round_begin: round_begin,
+      round_number: params["round_number"]
+    }
+  end
+
+  def json(%RoundSpecification{} = round_specification) do
+    %{
+      round_length: round_specification.round_length,
+      round_begin: round_specification.round_begin,
+      round_number: round_specification.round_number
     }
   end
 end
