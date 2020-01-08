@@ -141,6 +141,14 @@ defmodule Kniffel.User do
     Map.put(user, :private_key, private_key_pem)
   end
 
+  def get_user_from_server(id, server_url) do
+    {:ok, response} = HTTPoison.get(server_url <> "/api/users/#{id}")
+    %{"user" => user_params} = Poison.decode!(response.body)
+
+    {:ok, user} = create_user_p2p(user_params)
+    user
+  end
+
   def create_user(user_params) do
     user =
       %User{}

@@ -661,13 +661,13 @@ defmodule Kniffel.Blockchain do
     transactions =
       Enum.map(data["transactions"], fn transaction_params ->
         transaction =
-        case get_transaction(transaction_params["id"]) do
-          %Transaction{} = transaction ->
-            transaction
+          case get_transaction(transaction_params["id"]) do
+            %Transaction{} = transaction ->
+              transaction
 
-          nil ->
-            get_transaction_from_server(transaction_params["id"], server.url)
-        end
+            nil ->
+              get_transaction_from_server(transaction_params["id"], server.url)
+          end
 
         if transaction.signature == transaction_params["signature"] do
           transaction.signature
@@ -747,6 +747,14 @@ defmodule Kniffel.Blockchain do
   def get_transaction_from_server(id, server_url) do
     {:ok, response} = HTTPoison.get(server_url <> "/api/transactions/#{id}")
     %{"transaction" => transaction_params} = Poison.decode!(response.body)
+
+    case User.get_user(transaction_params["user_id"]) do
+      %User{} = user ->
+        user
+
+      nil ->
+        User.get_user_from_server(transaction_params["user_id"], server.url)
+    end
 
     {:ok, transaction} = insert_transaction(transaction_params)
     transaction
