@@ -753,7 +753,7 @@ defmodule Kniffel.Blockchain do
         user
 
       nil ->
-        User.get_user_from_server(transaction_params["user_id"], server.url)
+        User.get_user_from_server(transaction_params["user_id"], server_url)
     end
 
     {:ok, transaction} = insert_transaction(transaction_params)
