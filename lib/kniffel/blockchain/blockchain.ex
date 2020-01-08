@@ -187,7 +187,6 @@ defmodule Kniffel.Blockchain do
             transaction
 
           nil ->
-            IO.inspect("transaction is nil")
             get_transaction_from_server(propose_transaction.id, server.url)
         end
 
@@ -708,6 +707,8 @@ defmodule Kniffel.Blockchain do
         Enum.uniq(
           result ++ Enum.map(propose_responses, &([&1["server_id"]] ++ [block.server_id]))
         )
+      else
+        result ++ [block.server_id]
       end
     end)
   end

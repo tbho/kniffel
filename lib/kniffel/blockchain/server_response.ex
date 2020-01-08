@@ -118,7 +118,7 @@ defmodule Kniffel.Blockchain.Block.ServerResponse do
          data_enc <-
            Poison.encode!(%{hash: server_response.hash, error: server_response.error}),
          :ok <- Crypto.verify(data_enc, server.public_key, server_response.signature) do
-      {:ok, server_response}
+      server_response
     else
       nil ->
         {:error, :server_unknown}
