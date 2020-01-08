@@ -599,7 +599,7 @@ defmodule Kniffel.Blockchain do
 
     with {:index, true} <- {:index, last_block.index == index},
          {:hash, true} <- {:hash, last_block.hash == hash} do
-      :ok
+      {:ok, last_block}
     else
       {:index, false} ->
         IO.inspect("index is not right!")
