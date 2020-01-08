@@ -8,6 +8,7 @@ defmodule Kniffel.Scheduler.RoundSpecification do
   @default_round_length 30
   # Offset (in seconds)
   @round_offset 2
+  @propose_offset 1
 
   defstruct round_length: @default_round_length,
             round_begin: Timex.now(),
@@ -29,13 +30,12 @@ defmodule Kniffel.Scheduler.RoundSpecification do
   end
 
   def get_round_time(
-        %RoundSpecification{round_begin: round_begin, round_length: round_length},
+        %RoundSpecification{round_begin: round_begin},
         :propose_block
       ) do
     duration =
-      round_length
+      @propose_offset
       |> Timex.Duration.from_seconds()
-      |> Timex.Duration.scale(1 / 3)
 
     Timex.add(round_begin, duration)
   end
@@ -47,7 +47,7 @@ defmodule Kniffel.Scheduler.RoundSpecification do
     duration =
       round_length
       |> Timex.Duration.from_seconds()
-      |> Timex.Duration.scale(2 / 3)
+      |> Timex.Duration.scale(1 / 3)
 
     Timex.add(round_begin, duration)
   end
@@ -59,15 +59,16 @@ defmodule Kniffel.Scheduler.RoundSpecification do
     duration =
       round_length
       |> Timex.Duration.from_seconds()
+      |> Timex.Duration.scale(2 / 3)
 
     Timex.add(round_begin, duration)
   end
 
   def get_round_time(%RoundSpecification{} = round_specification, :cancel_block_propose),
-    do: get_round_time(round_specification, :propose_block)
+    do: get_round_time(round_specification, :commit_block)
 
   def get_round_time(%RoundSpecification{} = round_specification, :cancel_block_commit),
-    do: get_round_time(round_specification, :commit_block)
+    do: get_round_time(round_specification, :finalize_block)
 
   def get_round_time(_round_specification, _name), do: nil
 
