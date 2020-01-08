@@ -69,6 +69,10 @@ defmodule KniffelWeb.BlockController do
     render(conn, "show.json", block: block)
   end
 
+  def create(conn, %{"block" => block_params}) do
+    {:ok, block} = Blockchain.insert_block_from_network(block_params)
+  end
+
   def height(conn, _attrs) do
     server = Server.get_this_server()
     block = Blockchain.get_last_block()
