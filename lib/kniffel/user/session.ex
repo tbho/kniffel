@@ -45,7 +45,7 @@ defmodule Kniffel.User.Session do
     |> put_change(:access_token, Token.generate())
     |> put_change(
       :access_token_issued_at,
-      Timex.now()
+      DateTime.truncate(Timex.now(), :second)
     )
   end
 
@@ -55,7 +55,7 @@ defmodule Kniffel.User.Session do
     |> put_change(:refresh_token, Token.generate())
     |> put_change(
       :refresh_token_issued_at,
-      Timex.now()
+      DateTime.truncate(Timex.now(), :second)
     )
   end
 

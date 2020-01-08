@@ -54,7 +54,7 @@ defmodule Kniffel.Blockchain.Block.Propose do
           %{
             id: transaction.id,
             signature: transaction.signature,
-            timestamp: DateTime.to_string(transaction.timestamp)
+            timestamp: transaction.timestamp
           }
         end)
 

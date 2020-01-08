@@ -180,12 +180,18 @@ defmodule Kniffel.Scheduler do
     cache_atom = (Atom.to_string(type) <> "_timer") |> String.to_atom()
     time = RoundSpecification.get_round_time(round_specification, type)
 
-    timer =
-      Process.send_after(Kniffel.Scheduler, type, RoundSpecification.calculate_diff_to_now(time))
+    case read_timer(type) do
+      false ->
+        timer =
+        Process.send_after(Kniffel.Scheduler, type, RoundSpecification.calculate_diff_to_now(time))
 
-    Kniffel.Cache.set(cache_atom, timer,
-      ttl: RoundSpecification.calculate_diff_to_now(time, :seconds)
-    )
+        Kniffel.Cache.set(cache_atom, timer,
+          ttl: RoundSpecification.calculate_diff_to_now(time, :seconds)
+        )
+        :ok
+      time when is_integer(time) ->
+        Logger.debug("Timer " <> inspect(type) <> " still runnning!"}
+    end
   end
 
   # ----------------------------------------------------------------------------
@@ -207,9 +213,9 @@ defmodule Kniffel.Scheduler do
   def read_timer(name) do
     cache_atom = (Atom.to_string(name) <> "_timer") |> String.to_atom()
 
-    case Kniffel.Cache.take(cache_atom) do
+    case Kniffel.Cache.get(cache_atom) do
       nil ->
-        :ok
+        false
 
       process ->
         Process.read_timer(process)
