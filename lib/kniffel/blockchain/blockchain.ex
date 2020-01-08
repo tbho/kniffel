@@ -604,22 +604,22 @@ defmodule Kniffel.Blockchain do
         if last_block.index > index do
           # if last_block is higher delete blocks with higher index and
           # mark all transactions as not in block
-          set_transaction_ids_to_nil_for_blocks_with_higher_index(index)
-          delete_block_with_higher_index(index)
+          set_transaction_ids_to_nil_for_blocks_with_higher_index(index) |> IO.inspect
+          delete_block_with_higher_index(index) |> IO.inspect
 
-          insert_block_from_network(block_params)
+          insert_block_from_network(block_params) |> IO.inspect
         else
-          insert_block_from_network(block_params)
-          request_and_insert_block_from_server(server_id, last_block.index + 1)
+          insert_block_from_network(block_params) |> IO.inspect
+          request_and_insert_block_from_server(server_id, last_block.index + 1) |> IO.inspect
         end
 
       {:hash, false} ->
         # delete last block and mark transactions as not in block
-        set_transaction_ids_to_nil_for_block(index)
-        delete_block(last_block)
+        set_transaction_ids_to_nil_for_block(index) |> IO.inspect
+        delete_block(last_block) |> IO.inspect
 
         # insert new block
-        insert_block_network(block_params)
+        insert_block_network(block_params) |> IO.inspect
     end
   end
 
