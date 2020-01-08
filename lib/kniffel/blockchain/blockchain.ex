@@ -584,7 +584,7 @@ defmodule Kniffel.Blockchain do
 
     with {:ok, %{"block" => block_response}} <-
            Kniffel.Request.get(server.url <> "/api/blocks/#{block_index}"),
-         {:ok, _block} <- insert_block_from_network(block_response) do
+         {:ok, _block} <- insert_block_from_network(block_response |> IO.inspect) do
       :ok
     else
       {:error, _error} ->
