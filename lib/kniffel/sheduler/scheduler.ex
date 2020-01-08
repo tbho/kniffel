@@ -1,9 +1,4 @@
 defmodule Kniffel.Scheduler do
-  # in seconds
-  @default_round_length 30
-  # Offset (in seconds)
-  @round_offset 2
-
   use GenServer
   alias Kniffel.{Server, Blockchain}
   alias Kniffel.Blockchain.Crypto
@@ -103,7 +98,6 @@ defmodule Kniffel.Scheduler do
           Logger.debug(
             "--- Server is leader. Round number: #{inspect(round_specification.round_number)}"
           )
-
 
           schedule(round_specification, :propose_block, master_sheduler)
           schedule(round_specification, :commit_block, master_sheduler)
@@ -241,8 +235,7 @@ defmodule Kniffel.Scheduler do
       &cancel_timer(&1)
     )
 
-    %{round_number: round_number} =
-      round_specification = RoundSpecification.get_round_specification()
+    %RoundSpecification{round_number: round_number} = RoundSpecification.get_round_specification()
 
     this_server = Server.get_this_server()
 
@@ -271,7 +264,7 @@ defmodule Kniffel.Scheduler do
     end
 
     next_round_specification = RoundSpecification.get_next_round_specification()
-    schedule(next_round_specification, :next_round, self)
+    schedule(next_round_specification, :next_round, self())
   end
 
   def cancel_block_commit(reason) do
@@ -286,8 +279,7 @@ defmodule Kniffel.Scheduler do
       &cancel_timer(&1)
     )
 
-    %{round_number: round_number} =
-      round_specification = RoundSpecification.get_round_specification()
+    %RoundSpecification{round_number: round_number} = RoundSpecification.get_round_specification()
 
     this_server = Server.get_this_server()
 
@@ -316,7 +308,7 @@ defmodule Kniffel.Scheduler do
     end
 
     next_round_specification = RoundSpecification.get_next_round_specification()
-    schedule(next_round_specification, :next_round, self)
+    schedule(next_round_specification, :next_round, self())
   end
 
   def handle_cancel_block_propose(
@@ -324,7 +316,7 @@ defmodule Kniffel.Scheduler do
           "server_id" => server_id,
           "round_number" => incoming_round_number,
           "reason" => reason
-        } = round_params,
+        },
         round_specification
       ) do
     with %Server{authority: true} <- Server.get_server(server_id) do
@@ -348,7 +340,7 @@ defmodule Kniffel.Scheduler do
 
         "timeout" ->
           # compare DateTime.now() to round_times
-          with %{round_number: round_number} = round_specification <-
+          with %{round_number: round_number} <-
                  RoundSpecification.get_round_specification(),
                true <- incoming_round_number >= round_number,
                cancel_time <-
@@ -411,14 +403,14 @@ defmodule Kniffel.Scheduler do
           "server_id" => server_id,
           "round_number" => incoming_round_number,
           "reason" => reason
-        } = round_params,
+        },
         round_specification
       ) do
     with %Server{authority: true} <- Server.get_server(server_id) do
       case reason do
         "timeout" ->
           # compare DateTime.now() to round_times
-          with %{round_number: round_number} = round_specification <-
+          with %{round_number: round_number} <-
                  RoundSpecification.get_round_specification(),
                true <- incoming_round_number >= round_number,
                cancel_time <-

@@ -2,6 +2,7 @@ defmodule KniffelWeb.SchedulerController do
   use KniffelWeb, :controller
 
   alias Kniffel.Scheduler
+  alias Kniffel.Scheduler.RoundSpecification
 
   def next_round(conn, _attrs) do
     case Kniffel.Scheduler.RoundSpecification.get_next_round_specification() do

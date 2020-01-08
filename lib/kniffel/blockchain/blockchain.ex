@@ -11,12 +11,11 @@ defmodule Kniffel.Blockchain do
     Block,
     Block.Propose,
     Block.ServerResponse,
-    Block.ServerAge,
     Transaction
   }
 
   alias Kniffel.{Game, Game.Score, User, Server}
-  alias Kniffel.Scheduler.RoundSpecification
+  alias Kniffel.Scheduler.{RoundSpecification, ServerAge}
 
   require Logger
 

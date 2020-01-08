@@ -152,7 +152,7 @@ defmodule Kniffel.Server do
           )
         end)
 
-        Kniffel.Blockchain.Block.ServerAge.get_server_age(true)
+        Kniffel.Scheduler.ServerAge.get_server_age(true)
       end
 
       {:ok, server}
@@ -214,6 +214,9 @@ defmodule Kniffel.Server do
     else
       {:ok, %{"ok" => "Server already known."}} ->
         :ok
+
+      {:ok, %{"error" => message}} ->
+        {:error, message}
 
       true ->
         :ok
