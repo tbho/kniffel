@@ -140,7 +140,7 @@ defmodule Kniffel.Blockchain do
   def validate_block_proposal(%Propose{} = propose) do
     with {:ok, propose} <- Propose.verify(propose),
          transactions <- get_proposal_transactions(propose),
-         {:transactions, true} <- {:transactions, Enum.empty?(transactions)},
+         {:transactions, false} <- {:transactions, Enum.empty?(transactions)},
          block_data_ids <- get_block_data_ids(),
          true <- Enum.map(transactions, & &1.id) |> Enum.sort() == block_data_ids |> Enum.sort() do
       propose_response =
@@ -156,7 +156,7 @@ defmodule Kniffel.Blockchain do
 
       propose_response
     else
-      {:transactions, false} ->
+      {:transactions, true} ->
         Map.new()
         |> Map.put(:error, :no_transactions_in_block)
         |> Map.put(:server, Server.get_this_server())
@@ -184,11 +184,11 @@ defmodule Kniffel.Blockchain do
         transaction =
         case get_transaction(propose_transaction.id) do
           %Transaction{} = transaction ->
-            transaction |> IO.inspect
+            transaction
 
           nil ->
             IO.inspect("transaction is nil")
-            get_transaction_from_server(propose_transaction.id, server.url) |> IO.inspect
+            get_transaction_from_server(propose_transaction.id, server.url)
         end
 
       true = transaction.signature == propose_transaction.signature
