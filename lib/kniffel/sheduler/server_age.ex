@@ -49,7 +49,11 @@ defmodule Kniffel.Scheduler.ServerAge do
 
     {result, offset} =
       Enum.reduce(blocks, {result, offset}, fn block, {result, offset} ->
-        {%{result | ages: result.ages ++ [{block.server_id, offset}]}, offset + 1}
+        if Enum.any?(result.ages, fn {server_id, _offset} -> block.server_id == server_id end) do
+          {result, offset + 1}
+        else
+          {%{result | ages: result.ages ++ [{block.server_id, offset}]}, offset + 1}
+        end
       end)
 
     cond do
@@ -74,8 +78,8 @@ defmodule Kniffel.Scheduler.ServerAge do
     shift_server_ages(server_age, 0 - length(Enum.uniq_by(blocks, & &1.server_id)))
 
     Enum.reduce(blocks, {server_age, 0}, fn block, {server_age, offset} ->
-      List.delete(server_age, get_entry_by_server_id(server_age, block.server_id))
-      {%{server_age | ages: server_age.ages ++ {block.server_id, offset}}, offset + 1}
+      List.delete(server_age.ages, get_entry_by_server_id(server_age, block.server_id))
+      {%{server_age | ages: server_age.ages ++ [{block.server_id, offset}]}, offset + 1}
     end)
 
     servers = Server.get_authorized_servers()
@@ -126,7 +130,7 @@ defmodule Kniffel.Scheduler.ServerAge do
 
   def get_position_in_server_queue(server_id) do
     with server_age when not is_nil(server_age) <- get_server_age(),
-         server_ages <- Enum.sort_by(server_age.ages, &elem(&1, 1), &<=/2) do
+         server_ages <- Enum.sort_by(server_age.ages, &elem(&1, 1), &>=/2) do
       {position, _changed} =
         Enum.reduce(server_ages, {1, false}, fn
           _position_result, {position, true} ->

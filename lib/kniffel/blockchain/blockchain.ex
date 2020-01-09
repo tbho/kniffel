@@ -390,6 +390,10 @@ defmodule Kniffel.Blockchain do
 
     this_server = Server.get_this_server()
 
+    ServerAge.get_server_age()
+    |> ServerAge.update_server_ages()
+    |> IO.inspect()
+
     Server.get_authorized_servers(false)
     |> Enum.map(fn server ->
       with {:ok, :accept} <-
@@ -404,9 +408,7 @@ defmodule Kniffel.Blockchain do
                  },
                  round_specification:
                    RoundSpecification.json(RoundSpecification.get_round_specification()),
-                 server_age:
-                   ServerAge.get_server_age()
-                   |> ServerAge.update_server_ages()
+                 server_age: %{}
                }),
                [
                  {"Content-Type", "application/json"}
@@ -583,7 +585,7 @@ defmodule Kniffel.Blockchain do
 
     with {:ok, %{"block" => block_response}} <-
            Kniffel.Request.get(server.url <> "/api/blocks/#{block_index}"),
-         {:ok, _block} <- insert_block_from_network(block_response |> IO.inspect) do
+         {:ok, _block} <- insert_block_from_network(block_response |> IO.inspect()) do
       :ok
     else
       {:error, _error} ->
