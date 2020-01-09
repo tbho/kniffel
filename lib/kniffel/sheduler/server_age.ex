@@ -78,7 +78,11 @@ defmodule Kniffel.Scheduler.ServerAge do
     shift_server_ages(server_age, 0 - length(Enum.uniq_by(blocks, & &1.server_id)))
 
     Enum.reduce(blocks, {server_age, 0}, fn block, {server_age, offset} ->
-      %{server_age | ages: = List.delete(server_age.ages, get_entry_by_server_id(server_age, block.server_id))}
+      %{
+        server_age
+        | ages: List.delete(server_age.ages, get_entry_by_server_id(server_age, block.server_id))
+      }
+
       {%{server_age | ages: server_age.ages ++ [{block.server_id, offset}]}, offset + 1}
     end)
 
