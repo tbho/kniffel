@@ -430,7 +430,7 @@ defmodule Kniffel.Blockchain do
         "index" => index
       }) do
     with %Server{authority: true} = server <- Server.get_server(server_id),
-         {:leader, true} <- {:leader, ServerAge.is_leader?(server)},
+         {:leader, true} <- {:leader, ServerAge.is_leader?(server.id)},
          {:block, %Block{} = last_block} = {:block, get_last_block()},
          true = index == last_block.index,
          true = hash == last_block.hash do
