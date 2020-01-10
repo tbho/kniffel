@@ -406,10 +406,7 @@ defmodule Kniffel.Blockchain do
                    RoundSpecification.json(RoundSpecification.get_next_round_specification()),
                  server_age:
                    ServerAge.json(ServerAge.update_server_ages(ServerAge.get_server_age()))
-               }),
-               [
-                 {"Content-Type", "application/json"}
-               ]
+               })
              ) do
       else
         {:ok, :blocks_do_not_match} ->
