@@ -2,7 +2,7 @@ defmodule KniffelWeb.SchedulerController do
   use KniffelWeb, :controller
 
   alias Kniffel.Scheduler
-  alias Kniffel.Scheduler.RoundSpecification
+  alias Kniffel.Scheduler.{RoundSpecification, ServerAge}
 
   def next_round(conn, _attrs) do
     case Kniffel.Scheduler.RoundSpecification.get_next_round_specification() do
@@ -19,14 +19,8 @@ defmodule KniffelWeb.SchedulerController do
       nil ->
         json(conn, %{error: :not_found})
 
-      hit ->
-        json(conn, %{
-          server_age: %{
-            ages: Enum.reduce(hit.ages, %{}, &Map.put(&2, elem(&1, 0), elem(&1, 1))),
-            checked_at_block: hit.checked_at_block,
-            offsets: Enum.reduce(hit.offsets, %{}, &Map.put(&2, elem(&1, 0), elem(&1, 1)))
-          }
-        })
+      server_age ->
+        json(conn, %{server_age: ServerAge.json(server_age)})
     end
   end
 
