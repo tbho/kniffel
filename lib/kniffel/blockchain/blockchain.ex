@@ -585,7 +585,8 @@ defmodule Kniffel.Blockchain do
          {:ok, _block} <- insert_block_from_network(block_response |> IO.inspect()) do
       :ok
     else
-      {:error, _error} ->
+      {:error, error} ->
+        Logger.debug(inspect(error))
         :error
     end
   end
@@ -612,8 +613,12 @@ defmodule Kniffel.Blockchain do
           insert_block_from_network(block_params) |> IO.inspect()
         else
           IO.inspect("last_block index is lower")
-          request_and_insert_block_from_server(server_id, index - 1) |> IO.inspect()
-          insert_block_network(block_params) |> IO.inspect()
+          with :ok <- request_and_insert_block_from_server(server_id, index - 1) do
+            insert_block_network(block_params) |> IO.inspect()
+          else
+            :error ->
+              {:error, :could_not_request_block}
+          end
         end
 
       {:hash, false} ->
