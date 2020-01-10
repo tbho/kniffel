@@ -392,7 +392,7 @@ defmodule Kniffel.Blockchain do
 
     Server.get_authorized_servers(false)
     |> Enum.map(fn server ->
-      with {:ok, :accept} <-
+      with {:ok, %{"ok" => "accept"}} <-
              Kniffel.Request.post(
                server.url <> "/api/blocks/finalize",
                %{
