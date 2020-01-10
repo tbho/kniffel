@@ -157,15 +157,10 @@ defmodule Kniffel.Scheduler.ServerAge do
 
     server_age_responses =
       Enum.reduce(servers, [], fn server, result ->
-        with {:ok, %{"server_age" => server_age}} <-
-               Kniffel.Request.get(server.url <> "/api/sheduler/server_age") do
-          ages = Enum.map(server_age["ages"], fn {server_id, age} -> {server_id, age} end)
-
-          offsets =
-            Enum.map(server_age["offsets"], fn {server_id, offset} -> {server_id, offset} end)
-
-          result ++
-            [%{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}]
+        with {:ok, %{"server_age" => server_age_params}} <-
+               Kniffel.Request.get(server.url <> "/api/sheduler/server_age"),
+             %ServerAge{} = server_age <- cast(server_age_params) do
+          result ++ [server_age]
         else
           {:ok, %{"error" => _error}} ->
             result
@@ -201,5 +196,22 @@ defmodule Kniffel.Scheduler.ServerAge do
         ServerAge.get_server_age()
         :default
     end
+  end
+
+  defp cast(server_age_params) do
+    ages = Enum.map(server_age_params["ages"], fn {server_id, age} -> {server_id, age} end)
+
+    offsets =
+      Enum.map(server_age_params["offsets"], fn {server_id, offset} -> {server_id, offset} end)
+
+    %{ages: ages, checked_at_block: server_age["checked_at_block"], offsets: offsets}
+  end
+
+  defp json(%ServerAge{} = server_age) do
+    %{
+      ages: Enum.reduce(server_age.ages, %{}, &Map.put(&2, elem(&1, 0), elem(&1, 1))),
+      checked_at_block: server_age.checked_at_block,
+      offsets: Enum.reduce(server_age.offsets, %{}, &Map.put(&2, elem(&1, 0), elem(&1, 1)))
+    }
   end
 end
