@@ -154,12 +154,12 @@ defmodule Kniffel.Scheduler do
     Logger.info("--- Finalize new block")
 
     case Kniffel.Blockchain.finalize_block() do
-      {:ok, _block} ->
+      :ok ->
         next_round_specification = RoundSpecification.get_next_round_specification()
         schedule(next_round_specification, :next_round)
 
-      {:error, _block} ->
-        :error
+      {:error, error} ->
+        Logger.debug(error)
     end
   end
 

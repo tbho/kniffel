@@ -395,7 +395,7 @@ defmodule Kniffel.Blockchain do
       with {:ok, :accept} <-
              Kniffel.Request.post(
                server.url <> "/api/blocks/finalize",
-               Poison.encode!(%{
+               %{
                  block_height: %{
                    index: block.index,
                    timestamp: block.timestamp,
@@ -406,14 +406,12 @@ defmodule Kniffel.Blockchain do
                    RoundSpecification.json(RoundSpecification.get_next_round_specification()),
                  server_age:
                    ServerAge.json(ServerAge.update_server_ages(ServerAge.get_server_age()))
-               })
+               }
              ) do
+        :ok
       else
-        {:ok, :blocks_do_not_match} ->
-          nil
-
-        {:error, _} ->
-          nil
+        {:error, error} ->
+          {:error, error}
       end
     end)
   end
