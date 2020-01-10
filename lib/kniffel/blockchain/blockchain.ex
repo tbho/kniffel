@@ -414,6 +414,8 @@ defmodule Kniffel.Blockchain do
           {:error, error}
       end
     end)
+
+    :ok
   end
 
   def handle_height_change(%{
