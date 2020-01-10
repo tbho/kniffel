@@ -393,7 +393,7 @@ defmodule Kniffel.Blockchain do
     Server.get_authorized_servers(false)
     |> Enum.map(fn server ->
       with {:ok, :accept} <-
-             HTTPoison.post(
+             Kniffel.Request.post(
                server.url <> "/api/blocks/finalize",
                Poison.encode!(%{
                  block_height: %{
