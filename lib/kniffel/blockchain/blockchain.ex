@@ -613,6 +613,7 @@ defmodule Kniffel.Blockchain do
           insert_block_from_network(block_params) |> IO.inspect()
         else
           IO.inspect("last_block index is lower")
+
           with :ok <- request_and_insert_block_from_server(server_id, index - 1) do
             insert_block_network(block_params) |> IO.inspect()
           else

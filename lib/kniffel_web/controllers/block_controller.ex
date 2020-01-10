@@ -62,11 +62,11 @@ defmodule KniffelWeb.BlockController do
         "round_specification" => round_specification,
         "server_age" => _server_age
       }) do
-    {:ok, block} = Blockchain.handle_height_change(height_params)
+    {:ok, :accept} = Blockchain.handle_height_change(height_params)
 
     # TODO: compare server_ages
     Scheduler.schedule(RoundSpecification.cast(round_specification), :next_round)
-    render(conn, "show.json", block: block)
+    json(conn, %{ok: :accept})
   end
 
   def create(conn, %{"block" => block_params}) do

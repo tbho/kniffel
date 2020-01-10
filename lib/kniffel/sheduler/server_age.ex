@@ -204,7 +204,11 @@ defmodule Kniffel.Scheduler.ServerAge do
     offsets =
       Enum.map(server_age_params["offsets"], fn {server_id, offset} -> {server_id, offset} end)
 
-    %ServerAge{ages: ages, checked_at_block: server_age_params["checked_at_block"], offsets: offsets}
+    %ServerAge{
+      ages: ages,
+      checked_at_block: server_age_params["checked_at_block"],
+      offsets: offsets
+    }
   end
 
   def json(%ServerAge{} = server_age) do
