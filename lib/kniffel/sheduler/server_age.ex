@@ -198,7 +198,7 @@ defmodule Kniffel.Scheduler.ServerAge do
     end
   end
 
-  defp cast(server_age_params) do
+  def cast(server_age_params) do
     ages = Enum.map(server_age_params["ages"], fn {server_id, age} -> {server_id, age} end)
 
     offsets =
@@ -207,7 +207,7 @@ defmodule Kniffel.Scheduler.ServerAge do
     %{ages: ages, checked_at_block: server_age_params["checked_at_block"], offsets: offsets}
   end
 
-  defp json(%ServerAge{} = server_age) do
+  def json(%ServerAge{} = server_age) do
     %{
       ages: Enum.reduce(server_age.ages, %{}, &Map.put(&2, elem(&1, 0), elem(&1, 1))),
       checked_at_block: server_age.checked_at_block,
