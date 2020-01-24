@@ -749,14 +749,6 @@ defmodule Kniffel.Blockchain do
     {:ok, response} = HTTPoison.get(server_url <> "/api/transactions/#{id}")
     %{"transaction" => transaction_params} = Poison.decode!(response.body)
 
-    case User.get_user(transaction_params["user_id"]) do
-      %User{} = user ->
-        user
-
-      nil ->
-        User.get_user_from_server(transaction_params["user_id"], server_url)
-    end
-
     {:ok, transaction} = insert_transaction(transaction_params)
     transaction
   end
@@ -868,10 +860,20 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  def insert_transaction(%{"user_id" => user_id, "data" => data} = transaction_params) do
+  def insert_transaction(%{"user_id" => user_id, "data" => data} = transaction_params, server_url \\ nil) do
     data = Poison.decode!(data)
 
-    user = User.get_user(user_id)
+    user = case User.get_user(user_id) do
+      %User{} = user ->
+        user
+
+      nil ->
+        if server_url do
+          User.get_user_from_server(user_id, server_url)
+        else
+          raise "User not found."
+        end
+    end
 
     games =
       Enum.map(data["games"], fn game ->

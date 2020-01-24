@@ -5,7 +5,7 @@ div.level
       i.fas.fa-caret-left
     span = gettext("Back")
 div.level
-  h2.title.is-2 = @game.id
+  h2.title.is-2 = String.slice(@game.id, 0, 8)
   div.level-right
     = if show_roll_button?(@game.id, Plug.Conn.get_session(@conn, :user_id)) do
       a.button.is-medium.is-primary(href="#{game_score_path(@conn, :new, @game.id)}")
@@ -20,7 +20,8 @@ div.level
         thead
           th score_type
           = for user <- @game.users do
-            th = String.slice(user.id, 0, 7)
+            th = user.user_name
+            / th = String.slice(user.id, 0, 7)
         tbody
           = for type <- [:aces, :twos, :threes, :fours, :fives, :sixes, :sum_up, :bonus, :sum_bonus, :three_of_a_kind, :four_of_a_kind, :full_house, :small_straight, :large_straight, :kniffel, :chance, :sum_bonus, :sum_down, :sum_complete] do
             tr(class="#{if type in [:sum_up, :bonus, :sum_bonus,:sum_down, :sum_complete], do: "is-selected", else: ""}")

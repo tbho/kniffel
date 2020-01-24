@@ -169,7 +169,7 @@ defmodule Kniffel.Game do
       game_params
       |> Map.drop(["user_ids"])
       |> Map.drop(["user_id"])
-      |> Map.put("users", users)
+      |> Map.put("users", users ++ [user])
       |> Map.put("user", user)
 
     %Game{}
