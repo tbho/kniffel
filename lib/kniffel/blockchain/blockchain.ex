@@ -842,12 +842,13 @@ defmodule Kniffel.Blockchain do
         |> Transaction.changeset_create(transaction_params)
         |> Repo.insert()
 
+      this_server = Server.get_this_server()
       servers = Server.get_servers(false)
 
       Enum.map(servers, fn server ->
         HTTPoison.post(
           server.url <> "/api/transactions",
-          Poison.encode!(%{transaction: Transaction.json_encode(transaction)}),
+          Poison.encode!(%{transaction: Transaction.json_encode(transaction), server: %{url: this_server.url}}),
           [
             {"Content-Type", "application/json"}
           ]

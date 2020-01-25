@@ -47,8 +47,8 @@ defmodule KniffelWeb.TransactionController do
     end
   end
 
-  def create("json", conn, %{"transaction" => transaction_params}) do
-    case Blockchain.insert_transaction(transaction_params) do
+  def create("json", conn, %{"transaction" => transaction_params, "server" => %{"url" => url}}) do
+    case Blockchain.insert_transaction(transaction_params, url) do
       {:ok, transaction} ->
         render(conn, "show.json", transaction: transaction)
 
