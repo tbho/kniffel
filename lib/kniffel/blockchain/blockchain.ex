@@ -319,7 +319,7 @@ defmodule Kniffel.Blockchain do
               {:ok, %{body: %{transaction: transaction_params}}} =
                 HTTPoison.get(server.url <> "/api/transactions/#{transaction_params["id"]}")
 
-              {:ok, transaction} = insert_transaction(transaction_params)
+              {:ok, transaction} = insert_transaction(transaction_params, server.url)
               transaction
           end
         end)
@@ -762,7 +762,7 @@ defmodule Kniffel.Blockchain do
     {:ok, response} = HTTPoison.get(server_url <> "/api/transactions/#{id}")
     %{"transaction" => transaction_params} = Poison.decode!(response.body)
 
-    {:ok, transaction} = insert_transaction(transaction_params)
+    {:ok, transaction} = insert_transaction(transaction_params, server_url)
     transaction
   end
 
@@ -878,11 +878,19 @@ defmodule Kniffel.Blockchain do
   end
 
   def request_not_confirmed_transactions_from_network() do
-    servers = Server.get_authorized_servers(false)
+    try do
+      servers = Server.get_authorized_servers(false)
 
-    Enum.reduce(servers, [], fn server, result ->
-      result ++ request_not_confirmed_transactions_from_network(server.url)
-    end)
+      Enum.reduce(servers, [], fn server, result ->
+        result ++ request_not_confirmed_transactions_from_network(server.url)
+      end)
+
+      :ok
+    rescue
+      e in RuntimeError ->
+        Logger.error(e.message)
+        :error
+    end
   end
 
   def request_not_confirmed_transactions_from_network(server_url) do
@@ -891,7 +899,7 @@ defmodule Kniffel.Blockchain do
       Enum.map(transactions, fn transaction_params ->
         case get_transaction(transaction_params["id"]) do
           nil ->
-            {:ok, transaction} = insert_transaction(transaction_params)
+            {:ok, transaction} = insert_transaction(transaction_params, server_url)
             transaction
 
           %Transaction{} = transaction ->
@@ -923,11 +931,7 @@ defmodule Kniffel.Blockchain do
           user
 
         nil ->
-          if server_url do
-            User.get_user_from_server(user_id, server_url)
-          else
-            raise "User not found."
-          end
+          User.get_user_from_server(user_id, server_url)
       end
 
     games =
