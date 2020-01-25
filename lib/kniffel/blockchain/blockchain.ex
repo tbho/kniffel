@@ -734,10 +734,23 @@ defmodule Kniffel.Blockchain do
   # -----------------------------------------------------------------
   # -- Transaction
   # -----------------------------------------------------------------
-  def get_transactions() do
-    from(t in Transaction)
-    |> order_by(asc: :timestamp)
-    |> Repo.all()
+  def get_transactions(filter_params) do
+    query =
+      from(t in Transaction)
+      |> order_by(asc: :timestamp)
+
+    query =
+      Enum.reduce(filter_params, query, fn {key, value}, query ->
+        case key do
+          "confirmed" ->
+            where(query, [t], is_nil(t.block_index) != ^value)
+
+          "user" ->
+            where(query, [t], t.user_id == ^value)
+        end
+      end)
+
+    Repo.all(query)
   end
 
   def get_transaction(id) do
@@ -848,7 +861,10 @@ defmodule Kniffel.Blockchain do
       Enum.map(servers, fn server ->
         HTTPoison.post(
           server.url <> "/api/transactions",
-          Poison.encode!(%{transaction: Transaction.json_encode(transaction), server: %{url: this_server.url}}),
+          Poison.encode!(%{
+            transaction: Transaction.json_encode(transaction),
+            server: %{url: this_server.url}
+          }),
           [
             {"Content-Type", "application/json"}
           ]
@@ -861,20 +877,57 @@ defmodule Kniffel.Blockchain do
     end
   end
 
-  def insert_transaction(%{"user_id" => user_id, "data" => data} = transaction_params, server_url \\ nil) do
+  def request_not_confirmed_transactions_from_network() do
+    servers = Server.get_authorized_servers(false)
+
+    Enum.reduce(servers, [], fn server, result ->
+      result ++ request_not_confirmed_transactions_from_network(server_url)
+  end
+
+  def request_not_confirmed_transactions_from_network(server_url) do
+    with {:ok, %{"transactions" => transactions}} <-
+           Kniffel.Request.get(server_url <> "api/transactions", %{"filter[confirmed]" => false}) do
+      Enum.map(transactions, fn transaction_params ->
+        case get_transaction(transaction_params["id"]) do
+          nil ->
+            {:ok, transaction} = insert_transaction(transaction_params)
+            transaction
+
+          %Transaction{} = transaction ->
+            if transaction.signature != transaction_params["signature"] do
+              raise "Transaction with same id but other signature already known."
+            else
+              transaction
+            end
+        end
+      end)
+    else
+      {:ok, %{"error" => error}} ->
+        Logger.error(error)
+
+      {:error, error} ->
+        Logger.error(error)
+    end
+  end
+
+  def insert_transaction(
+        %{"user_id" => user_id, "data" => data} = transaction_params,
+        server_url \\ nil
+      ) do
     data = Poison.decode!(data)
 
-    user = case User.get_user(user_id) do
-      %User{} = user ->
-        user
+    user =
+      case User.get_user(user_id) do
+        %User{} = user ->
+          user
 
-      nil ->
-        if server_url do
-          User.get_user_from_server(user_id, server_url)
-        else
-          raise "User not found."
-        end
-    end
+        nil ->
+          if server_url do
+            User.get_user_from_server(user_id, server_url)
+          else
+            raise "User not found."
+          end
+      end
 
     games =
       Enum.map(data["games"], fn game ->

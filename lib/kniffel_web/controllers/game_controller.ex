@@ -22,8 +22,9 @@ defmodule KniffelWeb.GameController do
     game_changeset = Game.change_game()
     user_id = get_session(conn, :user_id)
 
-    users = User.get_users()
-    |> Enum.filter(& &1.id != user_id)
+    users =
+      User.get_users()
+      |> Enum.filter(&(&1.id != user_id))
 
     render(conn, "new.html",
       changeset: game_changeset,

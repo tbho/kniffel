@@ -4,8 +4,11 @@ defmodule KniffelWeb.TransactionController do
   alias Kniffel.Blockchain
   alias Kniffel.User
 
-  def index(conn, _params) do
-    transactions = Blockchain.get_transactions()
+  def index(conn, %{"filter" => filter_params}), do: filter_transactions(conn, filter_params)
+  def index(conn, _params), do: filter_transactions(conn, %{})
+
+  defp filter_transactions(conn, filter_params) do
+    transactions = Blockchain.get_transactions(filter_params)
     render(conn, "index.json", transactions: transactions)
   end
 
