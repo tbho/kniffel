@@ -881,7 +881,8 @@ defmodule Kniffel.Blockchain do
     servers = Server.get_authorized_servers(false)
 
     Enum.reduce(servers, [], fn server, result ->
-      result ++ request_not_confirmed_transactions_from_network(server_url)
+      result ++ request_not_confirmed_transactions_from_network(server.url)
+    end)
   end
 
   def request_not_confirmed_transactions_from_network(server_url) do

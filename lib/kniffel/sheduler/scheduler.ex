@@ -26,7 +26,7 @@ defmodule Kniffel.Scheduler do
          # add server to network
          {:height, :ok} <- {:height, Blockchain.compare_block_height_with_network()},
          # compare blocks with other servers (get server adress without adding server to network)
-         request_not_confirmed_transactions_from_network(),
+         Blockchain.request_not_confirmed_transactions_from_network(),
          # get not confirmed transactions from master network and maybe insert into database
          {:round_specification, r} when r in [:ok, :default] <-
            {:round_specification, RoundSpecification.request_round_specification_from_network()},

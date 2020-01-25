@@ -70,7 +70,8 @@ defmodule KniffelWeb.BlockController do
   end
 
   def create(conn, %{"block" => block_params}) do
-    {:ok, block} = Blockchain.insert_block_from_network(block_params)
+    {:ok, _block} = Blockchain.insert_block_from_network(block_params)
+    json(conn, %{ok: :accept})
   end
 
   def height(conn, _attrs) do
