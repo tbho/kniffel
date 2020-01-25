@@ -887,7 +887,7 @@ defmodule Kniffel.Blockchain do
 
   def request_not_confirmed_transactions_from_network(server_url) do
     with {:ok, %{"transactions" => transactions}} <-
-           Kniffel.Request.get(server_url <> "api/transactions", %{"filter[confirmed]" => false}) do
+           Kniffel.Request.get(server_url <> "/api/transactions", %{"filter[confirmed]" => false}) do
       Enum.map(transactions, fn transaction_params ->
         case get_transaction(transaction_params["id"]) do
           nil ->
