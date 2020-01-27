@@ -1,7 +1,7 @@
 ##
 # Assets
 
-FROM node:10-slim AS assets
+FROM node:13.6.0-slim AS assets
 
 RUN set -xe; \
     apt-get update; \
@@ -26,7 +26,7 @@ RUN if [ "$ENV" = "prod" ]; then yarn run deploy; fi
 ##
 # App
 
-FROM elixir:1.7-slim AS app
+FROM elixir:1.9.4-slim AS app
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
@@ -36,6 +36,7 @@ RUN apt-get update && \
   gcc \
   libssl1.1 \
   ca-certificates \
+  build-essential \
   && \
   rm -rf /var/lib/apt/lists/*
 
@@ -62,7 +63,7 @@ RUN if [ "$ENV" = "prod" ]; then mix do phx.digest, distillery.release --executa
 ##
 # Run
 
-FROM debian:stretch-slim
+FROM debian:buster-slim
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -qq update && \
