@@ -203,7 +203,7 @@ defmodule Kniffel.Server do
 
   def add_this_server_to_master_server() do
     with %Server{} = this_server <- Server.get_this_server(),
-         %Server{} = master_server <- Server.get_authorized_server(false),
+         %Server{} = master_server <- Server.get_server_by_url("https://kniffel.app"),
          {:ok, %{"server" => server}} <-
            Kniffel.Request.post(master_server.url <> "/api/servers", %{
              server: %{url: this_server.url}
