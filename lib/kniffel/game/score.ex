@@ -6,7 +6,7 @@ defmodule Kniffel.Game.Score do
   alias Kniffel.Blockchain.Crypto
   alias Kniffel.Game.Score
 
-  @primary_key {:id, :id, autogenerate: true}
+  @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
   schema "score" do
@@ -14,7 +14,7 @@ defmodule Kniffel.Game.Score do
     field(:score_type, ScoreType, default: :none)
     field :signature, :string
 
-    belongs_to(:predecessor, Kniffel.Game.Score, type: :id)
+    belongs_to(:predecessor, Kniffel.Game.Score)
     belongs_to(:user, Kniffel.User, type: :string)
     belongs_to(:game, Kniffel.Game)
     belongs_to(:server, Kniffel.Server, type: :string)

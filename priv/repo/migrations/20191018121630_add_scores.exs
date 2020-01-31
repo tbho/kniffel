@@ -5,8 +5,8 @@ defmodule Kniffel.Repo.Migrations.AddScores do
     ScoreType.create_type()
 
     create table("score", primary_key: false) do
-      add :id, :serial, primary_key: true
-      add :predecessor_id, references(:score, type: :id)
+      add :id, :uuid, primary_key: true
+      add :predecessor_id, references(:score, type: :uuid)
       add :dices, :map
       add :user_id, references(:user, type: :string)
       add :game_id, references(:game, type: :uuid)
