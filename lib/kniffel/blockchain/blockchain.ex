@@ -393,7 +393,7 @@ defmodule Kniffel.Blockchain do
     Server.get_authorized_servers(false)
     |> Enum.map(fn server ->
       with {:ok, %{"ok" => "accept"}} <-
-             Kniffel.Request.post(
+             Kniffel.request().post(
                server.url <> "/api/blocks/finalize",
                %{
                  block_height: %{
@@ -549,7 +549,7 @@ defmodule Kniffel.Blockchain do
 
     Enum.reduce(servers, [], fn server, result ->
       with {:ok, %{"height_response" => height_response}} <-
-             Kniffel.Request.get(server.url <> "/api/blocks/height"),
+             Kniffel.request().get(server.url <> "/api/blocks/height"),
            {:ok, timestamp} <- Timex.parse(height_response["timestamp"], "{ISO:Extended}") do
         result ++ [Map.put(height_response, "timestamp", timestamp)]
       else
@@ -564,7 +564,7 @@ defmodule Kniffel.Blockchain do
     server = Server.get_server(server_id)
 
     with {:ok, _response} <-
-           Kniffel.Request.post(server.url <> "/api/blocks", %{
+           Kniffel.request().post(server.url <> "/api/blocks", %{
              block: Block.json_encode(block)
            }) do
       :ok
@@ -578,7 +578,7 @@ defmodule Kniffel.Blockchain do
     server = Server.get_server(server_id) |> IO.inspect()
 
     with {:ok, %{"block" => block_response}} <-
-           Kniffel.Request.get(server.url <> "/api/blocks/#{block_index}"),
+           Kniffel.request().get(server.url <> "/api/blocks/#{block_index}"),
          {:ok, _block} <- insert_block_from_network(block_response |> IO.inspect()) do
       :ok
     else
@@ -765,10 +765,10 @@ defmodule Kniffel.Blockchain do
     case insert_transaction(transaction_params, server_url) do
       {:ok, transaction} ->
         transaction
+
       {:error, message} ->
         raise message
     end
-
   end
 
   def data_for_transaction?(user_id) do
@@ -900,15 +900,18 @@ defmodule Kniffel.Blockchain do
 
   def request_not_confirmed_transactions_from_network(server_url) do
     with {:ok, %{"transactions" => transactions}} <-
-           Kniffel.Request.get(server_url <> "/api/transactions", %{"filter[confirmed]" => false}) do
+           Kniffel.request().get(server_url <> "/api/transactions", %{
+             "filter[confirmed]" => false
+           }) do
       Enum.map(transactions, fn transaction_params ->
         case get_transaction(transaction_params["id"]) do
           nil ->
             case insert_transaction(transaction_params, server_url) do
               {:ok, transaction} ->
                 transaction
-                {:error, message} ->
-                  raise message
+
+              {:error, message} ->
+                raise message
             end
 
           %Transaction{} = transaction ->
@@ -925,6 +928,31 @@ defmodule Kniffel.Blockchain do
 
       {:error, error} ->
         Logger.error(error)
+    end
+  end
+
+  def order_scores_for_insertion(transactions) do
+    Enum.reduce(transactions, [], &add_score_tree_to_result(&1, transactions, &2))
+  end
+
+  def add_score_tree_to_result(score, transactions, result) do
+    case score in result do
+      true ->
+        result
+
+      false ->
+        if score["predecessor_id"] == nil do
+          result ++ [score]
+        else
+          case Enum.find(transactions, &(&1["id"] == score["predecessor_id"])) do
+            nil ->
+              result ++ [score]
+
+            pre_score ->
+              result = add_score_tree_to_result(pre_score, transactions, result)
+              result ++ [score]
+          end
+        end
     end
   end
 
@@ -965,7 +993,7 @@ defmodule Kniffel.Blockchain do
       |> Map.drop(["user_id", "block_index"])
       |> Map.put("user", user)
       |> Map.put("block", block)
-      |> Map.put("scores", data["scores"])
+      |> Map.put("scores", order_scores_for_insertion(data["scores"]))
       |> Map.put("games", games)
 
     %Transaction{}

@@ -132,11 +132,11 @@ defmodule Kniffel.Server do
   # end
 
   def create_server(%{"url" => url}) do
-    with {:ok, %{"server" => server}} <- Kniffel.Request.get(url <> "/api/servers/this"),
+    with {:ok, %{"server" => server}} <- Kniffel.request().get(url <> "/api/servers/this"),
          %Ecto.Changeset{} = changeset <- Server.changeset(%Server{}, server),
          {:ok, server} <- Repo.insert(changeset),
          {:ok, _reponse} <-
-           Kniffel.Request.post(url <> "/api/servers", %{
+           Kniffel.request().post(url <> "/api/servers", %{
              server: %{url: Server.get_this_server().url}
            }) do
       if server.authority do
@@ -205,7 +205,7 @@ defmodule Kniffel.Server do
     with %Server{} = this_server <- Server.get_this_server(),
          %Server{} = master_server <- Server.get_server_by_url("https://kniffel.app"),
          {:ok, %{"server" => server}} <-
-           Kniffel.Request.post(master_server.url <> "/api/servers", %{
+           Kniffel.request().post(master_server.url <> "/api/servers", %{
              server: %{url: this_server.url}
            }),
          {:ok, _server} <- Server.update_server(this_server, server) do

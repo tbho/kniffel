@@ -2,7 +2,7 @@ defmodule KniffelWeb.BlockController do
   use KniffelWeb, :controller
 
   alias Kniffel.{Blockchain, Server, Scheduler}
-  alias Kniffel.Scheduler.{RoundSpecification}
+  alias Kniffel.Scheduler.{RoundSpecification, ServerAge}
   alias Kniffel.Blockchain.Block.{Propose, ServerResponse}
 
   def index(conn, _params) do
@@ -60,13 +60,25 @@ defmodule KniffelWeb.BlockController do
   def finalize(conn, %{
         "block_height" => height_params,
         "round_specification" => round_specification,
-        "server_age" => _server_age
+        "server_age" => server_age
       }) do
     {:ok, :accept} = Blockchain.handle_height_change(height_params)
 
+    ServerAge.get_server_age()
+    |> ServerAge.update_server_ages()
+
+    case server_age
+         |> ServerAge.cast()
+         |> ServerAge.compare(ServerAge.get_server_age()) do
+      true ->
+        Scheduler.schedule(RoundSpecification.cast(round_specification), :next_round)
+        json(conn, %{ok: :accept})
+
+      false ->
+        json(conn, %{error: "server_age wrong"})
+    end
+
     # TODO: compare server_ages
-    Scheduler.schedule(RoundSpecification.cast(round_specification), :next_round)
-    json(conn, %{ok: :accept})
   end
 
   def create(conn, %{"block" => block_params}) do

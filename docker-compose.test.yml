@@ -7,19 +7,27 @@ services:
       args:
         ENV: test
       target: app
-    command: sh -c "mix deps.get && mix ecto.migrate && mix test.watch --stale"
+    command: sh -c "mix deps.get && mix test.watch"
     depends_on:
       - db
+      - sync
+    volumes:
+      - ./kniffel.key:/kniffel.key
     environment:
       DATABASE_URL: "psql://kniffel_test:kniffel@db/kniffel_test"
+      PRIV_KEY_PATH: "/kniffel.key"
+      AES_KEY: "dev"
+      URL: "http://hoge.cloud:3000"
 
   assets:
     build:
       context: .
       target: assets
       args:
-        ENV: dev
-    command: sh -c "yarn install && yarn run dev"
+        ENV: test
+    depends_on:
+      - sync
+    command: sh -c "yarn install && yarn run watch"
 
   db:
     image: postgres:10.3-alpine

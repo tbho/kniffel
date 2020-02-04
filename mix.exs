@@ -54,7 +54,9 @@ defmodule Kniffel.MixProject do
       {:httpoison, "~> 1.6"},
       {:distillery, "~> 2.0"},
       {:nebulex, "~> 1.1"},
-      {:timex, "~> 3.0"}
+      {:timex, "~> 3.0"},
+      {:mix_test_watch, "~> 1.0", only: :test},
+      {:benchee, "~> 1.0", only: [:test, :dev]}
     ]
   end
 
@@ -66,12 +68,11 @@ defmodule Kniffel.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      cleanup: ["run priv/repo/cleanup.exs"],
-      test: ["run priv/repo/block_test.exs"],
+      # cleanup: ["run priv/repo/cleanup.exs"],
+      # test: ["run priv/repo/block_test.exs"],
       seed: ["run -e \"Kniffel.DBTasks.seed()\" --no-start"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"]
-      # test: ["ecto.create --quiet", "ecto.migrate", "test"]
+      test: ["ecto.create --quiet", "ecto.migrate", "test"],
+      "test.watch": ["ecto.create --quiet", "ecto.migrate", "test.watch"]
     ]
   end
 end

@@ -58,7 +58,7 @@ defmodule KniffelWeb.UserController do
   end
 
   def create("json", conn, %{"user" => user}) do
-    case User.create_user_p2p(user) do
+    case User.create_user(user) do
       {:ok, user} ->
         render(conn, "show.json", user: user)
 

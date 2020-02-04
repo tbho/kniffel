@@ -8,6 +8,8 @@ defmodule Kniffel.Blockchain.Transaction do
   alias Kniffel.Game.Score
   alias Kniffel.User
 
+  require Logger
+
   @sign_fields [:data, :timestamp]
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -56,7 +58,7 @@ defmodule Kniffel.Blockchain.Transaction do
   def sign_changeset(changeset, password) do
     with %Ecto.Changeset{} <- changeset,
          {_, user} <- fetch_field(changeset, :user),
-         %User{} = user <- User.preload_private_key(user, password) do
+         {:ok, user} <- User.preload_private_key(user, password) do
       signature =
         changeset
         |> take(@sign_fields)
@@ -65,6 +67,10 @@ defmodule Kniffel.Blockchain.Transaction do
 
       changeset
       |> put_change(:signature, signature)
+    else
+      {:error, message} ->
+        Logger.error(inspect(message))
+        add_error(changeset, :signature, "signature could not be applied")
     end
   end
 

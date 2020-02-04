@@ -1,10 +1,16 @@
-defmodule Kniffel.Request do
+defmodule Kniffel.Request.HTTPoison do
+  @behaviour Kniffel.Request
+
   require Logger
 
-  def get(url) do
-    HTTPoison.get(url, [
-      {"Content-Type", "application/json"}
-    ])
+  def get(url, params \\ %{}) do
+    HTTPoison.get(
+      url,
+      [
+        {"Content-Type", "application/json"}
+      ],
+      params: params
+    )
     |> handle_response
   end
 

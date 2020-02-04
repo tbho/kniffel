@@ -16,7 +16,7 @@ defmodule Kniffel.Seed do
 
   def cleanup_database do
     Repo.delete_all(Score)
-    Repo.delete_all(from gu in "game_users")
+    Repo.delete_all(from(gu in "game_users"))
     Repo.delete_all(Game)
     Repo.delete_all(Transaction)
     Repo.delete_all(User)

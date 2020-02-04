@@ -13,6 +13,8 @@ defmodule Kniffel.User do
   alias Kniffel.Blockchain.{Transaction}
   alias Kniffel.Game.{Score}
 
+  require Logger
+
   @primary_key {:id, :string, autogenerate: false}
   @foreign_key_type :string
 
@@ -33,16 +35,36 @@ defmodule Kniffel.User do
   end
 
   @doc false
-  def changeset_gen_id(user, %{"private_key" => ""} = attrs) do
+  defp changeset(user, %{"private_key" => ""} = attrs) do
     {:ok, private_key} = ExPublicKey.generate_key(4096)
     changeset_encrypt_private_key(user, private_key, attrs)
   end
 
   @doc false
-  def changeset_gen_id(user, %{"private_key" => private_key} = attrs) do
+  defp changeset(user, %{"private_key" => private_key} = attrs) do
     {:ok, private_key} = ExPublicKey.loads(private_key)
     changeset_encrypt_private_key(user, private_key, attrs)
   end
+
+  @doc false
+  defp changeset(user, %{"public_key" => public_key} = attrs) do
+    {:ok, public_key} = ExPublicKey.loads(public_key)
+    id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
+
+    attrs =
+      attrs
+      |> Map.put("id", id)
+
+    user
+    |> cast(attrs, [:id, :user_name, :public_key])
+    |> put_assoc(:games, attrs["games"] || user.games)
+    |> put_assoc(:scores, attrs["scores"] || user.scores)
+    |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
+    |> unique_constraint(:user_name)
+  end
+
+  @doc false
+  defp changeset(user, attrs), do: password_changeset(user, attrs)
 
   @doc false
   defp changeset_encrypt_private_key(user, private_key, %{"password" => password} = attrs) do
@@ -66,31 +88,13 @@ defmodule Kniffel.User do
       |> Map.put("public_key", public_key_pem)
       |> Map.put("id", id)
 
-    changeset(user, attrs)
+    password_changeset(user, attrs)
   end
 
-  @doc false
-  def changeset(user, attrs) do
+  defp password_changeset(user, attrs) do
     user
     |> cast(attrs, [:id, :user_name, :password, :private_key_crypt, :private_key, :public_key])
     |> validate_password
-    |> put_assoc(:games, attrs["games"] || user.games)
-    |> put_assoc(:scores, attrs["scores"] || user.scores)
-    |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
-    |> unique_constraint(:user_name)
-  end
-
-  @doc false
-  def changeset_p2p(user, %{"public_key" => public_key} = attrs) do
-    {:ok, public_key} = ExPublicKey.loads(public_key)
-    id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
-
-    attrs =
-      attrs
-      |> Map.put("id", id)
-
-    user
-    |> cast(attrs, [:id, :user_name, :public_key])
     |> put_assoc(:games, attrs["games"] || user.games)
     |> put_assoc(:scores, attrs["scores"] || user.scores)
     |> put_assoc(:transactions, attrs["transactions"] || user.transactions)
@@ -130,30 +134,36 @@ defmodule Kniffel.User do
   end
 
   def preload_private_key(user, password) do
-    {:ok, {init_vec, cipher_text, cipher_tag}} = ExCrypto.decode_payload(user.private_key_crypt)
-
-    private_key_pem =
-      :sha256
-      |> :crypto.hash(System.get_env("AES_KEY"))
-      |> ExCrypto.decrypt(password, init_vec, cipher_text, cipher_tag)
-      |> elem(1)
-
-    Map.put(user, :private_key, private_key_pem)
+    with {:ok, {init_vec, cipher_text, cipher_tag}} <-
+           ExCrypto.decode_payload(user.private_key_crypt),
+         aes_key <- :crypto.hash(:sha256, System.get_env("AES_KEY")),
+         {:ok, private_key_pem} <-
+           ExCrypto.decrypt(aes_key, password, init_vec, cipher_text, cipher_tag) do
+      Map.put(user, :private_key, private_key_pem)
+    else
+      {:error, message} ->
+        Logger.error(inspect(message))
+        {:error, :could_not_load}
+    end
   end
 
   def get_user_from_server(id, server_url) do
-    {:ok, response} = HTTPoison.get(server_url <> "/api/users/#{id}")
-    %{"user" => user_params} = Poison.decode!(response.body)
-
-    {:ok, user} = create_user_p2p(user_params)
-    user
+    with {:ok, %{"user" => user_params}} <-
+           Kniffel.request().get(server_url <> "/api/users/#{id}"),
+         {:ok, user} = create_user(user_params) do
+      user
+    else
+      {:error, error} ->
+        Logger.debug(inspect(error))
+        error
+    end
   end
 
   def create_user(user_params) do
     user =
       %User{}
       |> Repo.preload([:games, :scores, :transactions])
-      |> User.changeset_gen_id(user_params)
+      |> changeset(user_params)
       |> Repo.insert()
 
     case user do
@@ -161,9 +171,7 @@ defmodule Kniffel.User do
         servers = Server.get_servers(false)
 
         Enum.map(servers, fn server ->
-          HTTPoison.post(server.url <> "/api/users", Poison.encode!(%{user: User.json(user)}), [
-            {"Content-Type", "application/json"}
-          ])
+          Kniffel.request().post(server.url <> "/api/users", %{user: User.json(user)})
         end)
 
         {:ok, user}
@@ -173,17 +181,10 @@ defmodule Kniffel.User do
     end
   end
 
-  def create_user_p2p(user_params) do
-    %User{}
-    |> Repo.preload([:games, :scores, :transactions])
-    |> User.changeset_p2p(user_params)
-    |> Repo.insert()
-  end
-
   def change_user(user \\ %User{}, user_params \\ %{}) do
     user
     |> Repo.preload([:games, :scores, :transactions])
-    |> User.changeset(user_params)
+    |> changeset(user_params)
   end
 
   @doc "Verify a block using the public key present in it"
@@ -194,4 +195,6 @@ defmodule Kniffel.User do
       public_key: user.public_key
     }
   end
+
+  def json(user), do: nil
 end
