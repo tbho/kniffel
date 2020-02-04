@@ -56,7 +56,9 @@ defmodule Kniffel.MixProject do
       {:nebulex, "~> 1.1"},
       {:timex, "~> 3.0"},
       {:mix_test_watch, "~> 1.0", only: :test},
-      {:benchee, "~> 1.0", only: [:test, :dev]}
+      {:benchee, "~> 1.0", only: [:test, :dev]},
+      {:ex_machina, "~> 2.3", only: :test},
+      {:mox, "~> 0.5", only: :test}
     ]
   end
 

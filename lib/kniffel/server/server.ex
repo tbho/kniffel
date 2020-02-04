@@ -13,7 +13,8 @@ defmodule Kniffel.Server do
   @primary_key {:id, :string, autogenerate: false}
   @foreign_key_type :string
 
-  @server_white_list ["https://kniffel.app", "http://hoge.cloud:3000"]
+  @server_white_list ["https://kniffel.app", "http://hoge.cloud:3000", "https://tobiashoge.de"]
+  @http_client Application.get_env(:kniffel, :request)
 
   schema "server" do
     field :url, :string
@@ -24,7 +25,7 @@ defmodule Kniffel.Server do
   end
 
   @doc false
-  def changeset(server, attrs = %{"public_key" => public_key_string, "url" => url}) do
+  defp changeset(server, attrs = %{"public_key" => public_key_string, "url" => url}) do
     {:ok, public_key} = ExPublicKey.loads(public_key_string)
     {:ok, public_key_pem} = ExPublicKey.pem_encode(public_key)
 
@@ -40,7 +41,7 @@ defmodule Kniffel.Server do
   end
 
   @doc false
-  def cast_changeset(server, attrs) do
+  defp cast_changeset(server, attrs) do
     server
     |> cast(attrs, [:id, :url, :public_key, :authority])
   end
@@ -115,41 +116,20 @@ defmodule Kniffel.Server do
     end
   end
 
-  # def get_oldest_server() do
-  #   case Kniffel.Cache.get(:server) do
-  #     %Server{} = server ->
-  #       server
-
-  #     nil ->
-  #       {:ok, private_key} = Crypto.private_key()
-  #       {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
-  #       server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
-
-  #       server = Server.get_server(server_id)
-  #       Kniffel.Cache.set(:server, server)
-  #       server
-  #   end
-  # end
-
   def create_server(%{"url" => url}) do
-    with {:ok, %{"server" => server}} <- Kniffel.request().get(url <> "/api/servers/this"),
-         %Ecto.Changeset{} = changeset <- Server.changeset(%Server{}, server),
+    with {:ok, %{"server" => server}} <- @http_client.get(url <> "/api/servers/this"),
+         %Ecto.Changeset{} = changeset <- changeset(%Server{}, server),
          {:ok, server} <- Repo.insert(changeset),
          {:ok, _reponse} <-
-           Kniffel.request().post(url <> "/api/servers", %{
+           @http_client.post(url <> "/api/servers", %{
              server: %{url: Server.get_this_server().url}
            }) do
+            IO.inspect(server)
       if server.authority do
-        servers = get_authorized_servers(false)
+        servers = get_authorized_servers(false) |> IO.inspect
 
         Enum.map(servers, fn server ->
-          HTTPoison.post(
-            server.url <> "/api/servers",
-            Poison.encode!(%{server: %{url: url}}),
-            [
-              {"Content-Type", "application/json"}
-            ]
-          )
+          @http_client.post(server.url <> "/api/servers", %{server: %{url: url}})
         end)
 
         Kniffel.Scheduler.ServerAge.get_server_age(true)
@@ -167,7 +147,7 @@ defmodule Kniffel.Server do
 
   def update_server(server, server_params) do
     server
-    |> Server.cast_changeset(server_params)
+    |> cast_changeset(server_params)
     |> Repo.update()
   end
 
@@ -205,7 +185,7 @@ defmodule Kniffel.Server do
     with %Server{} = this_server <- Server.get_this_server(),
          %Server{} = master_server <- Server.get_server_by_url("https://kniffel.app"),
          {:ok, %{"server" => server}} <-
-           Kniffel.request().post(master_server.url <> "/api/servers", %{
+           @http_client.post(master_server.url <> "/api/servers", %{
              server: %{url: this_server.url}
            }),
          {:ok, _server} <- Server.update_server(this_server, server) do

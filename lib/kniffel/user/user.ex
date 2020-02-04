@@ -15,6 +15,8 @@ defmodule Kniffel.User do
 
   require Logger
 
+  @http_client Application.get_env(:kniffel, :request)
+
   @primary_key {:id, :string, autogenerate: false}
   @foreign_key_type :string
 
@@ -149,7 +151,7 @@ defmodule Kniffel.User do
 
   def get_user_from_server(id, server_url) do
     with {:ok, %{"user" => user_params}} <-
-           Kniffel.request().get(server_url <> "/api/users/#{id}"),
+           @http_client.get(server_url <> "/api/users/#{id}"),
          {:ok, user} = create_user(user_params) do
       user
     else
@@ -171,7 +173,7 @@ defmodule Kniffel.User do
         servers = Server.get_servers(false)
 
         Enum.map(servers, fn server ->
-          Kniffel.request().post(server.url <> "/api/users", %{user: User.json(user)})
+          @http_client.post(server.url <> "/api/users", %{user: User.json(user)})
         end)
 
         {:ok, user}

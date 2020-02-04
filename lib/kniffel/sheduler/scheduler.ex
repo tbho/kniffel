@@ -5,6 +5,8 @@ defmodule Kniffel.Scheduler do
   alias Kniffel.Scheduler.{RoundSpecification, ServerAge}
   require Logger
 
+  @http_client Application.get_env(:kniffel, :request)
+
   def start_link(state) do
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
@@ -269,7 +271,7 @@ defmodule Kniffel.Scheduler do
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
         response =
-          Kniffel.request().post(server.url <> "/api/sheduler/cancel_block_propose", %{
+          @http_client.post(server.url <> "/api/sheduler/cancel_block_propose", %{
             cancel_block_propose: Map.put(data, :signature, signature),
             round_specification:
               RoundSpecification.get_round_specification() |> RoundSpecification.json()
@@ -328,7 +330,7 @@ defmodule Kniffel.Scheduler do
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
         response =
-          Kniffel.request().post(server.url <> "/api/sheduler/cancel_block_commit", %{
+          @http_client.post(server.url <> "/api/sheduler/cancel_block_commit", %{
             cancel_block_commit: Map.put(data, :signature, signature),
             round_specification:
               RoundSpecification.get_round_specification() |> RoundSpecification.json()

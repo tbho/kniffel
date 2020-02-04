@@ -25,6 +25,7 @@ defmodule Kniffel.DataCase do
     end
   end
 
+
   setup tags do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Kniffel.Repo)
 

@@ -10,6 +10,8 @@ defmodule Kniffel.Scheduler.RoundSpecification do
   @round_offset 2
   @propose_offset 1
 
+  @http_client Application.get_env(:kniffel, :request)
+
   defstruct round_length: @default_round_length,
             round_begin: Timex.now(),
             # Timex.add(
@@ -132,7 +134,7 @@ defmodule Kniffel.Scheduler.RoundSpecification do
     round_specification_responses =
       Enum.reduce(servers, [], fn server, result ->
         with {:ok, %{"round_response" => round_response}} <-
-               Kniffel.request().get(server.url <> "/api/sheduler/next_round") do
+               @http_client.get(server.url <> "/api/sheduler/next_round") do
           {:ok, round_begin} = Timex.parse(round_response["round_begin"], "{ISO:Extended}")
 
           case Timex.compare(Timex.now(), round_begin) do

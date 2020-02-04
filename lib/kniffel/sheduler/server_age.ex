@@ -9,6 +9,8 @@ defmodule Kniffel.Scheduler.ServerAge do
 
   @age_calculation_select_limit 10
 
+  @http_client Application.get_env(:kniffel, :request)
+
   defstruct ages: [],
             checked_at_block: 0,
             offsets: []
@@ -177,7 +179,7 @@ defmodule Kniffel.Scheduler.ServerAge do
     server_age_responses =
       Enum.reduce(servers, [], fn server, result ->
         with {:ok, %{"server_age" => server_age_params}} <-
-               Kniffel.request().get(server.url <> "/api/sheduler/server_age"),
+               @http_client.get(server.url <> "/api/sheduler/server_age"),
              %ServerAge{} = server_age <- cast(server_age_params) do
           result ++ [server_age]
         else

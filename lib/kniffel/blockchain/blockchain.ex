@@ -21,6 +21,7 @@ defmodule Kniffel.Blockchain do
 
   @block_transaction_limit 10
   @active_server_treshhold 10
+  @http_client Application.get_env(:kniffel, :request)
 
   # -----------------------------------------------------------------
   # -- Block
@@ -393,7 +394,7 @@ defmodule Kniffel.Blockchain do
     Server.get_authorized_servers(false)
     |> Enum.map(fn server ->
       with {:ok, %{"ok" => "accept"}} <-
-             Kniffel.request().post(
+              @http_client.post(
                server.url <> "/api/blocks/finalize",
                %{
                  block_height: %{
@@ -549,7 +550,7 @@ defmodule Kniffel.Blockchain do
 
     Enum.reduce(servers, [], fn server, result ->
       with {:ok, %{"height_response" => height_response}} <-
-             Kniffel.request().get(server.url <> "/api/blocks/height"),
+             @http_client.get(server.url <> "/api/blocks/height"),
            {:ok, timestamp} <- Timex.parse(height_response["timestamp"], "{ISO:Extended}") do
         result ++ [Map.put(height_response, "timestamp", timestamp)]
       else
@@ -564,7 +565,7 @@ defmodule Kniffel.Blockchain do
     server = Server.get_server(server_id)
 
     with {:ok, _response} <-
-           Kniffel.request().post(server.url <> "/api/blocks", %{
+           @http_client.post(server.url <> "/api/blocks", %{
              block: Block.json_encode(block)
            }) do
       :ok
@@ -578,7 +579,7 @@ defmodule Kniffel.Blockchain do
     server = Server.get_server(server_id) |> IO.inspect()
 
     with {:ok, %{"block" => block_response}} <-
-           Kniffel.request().get(server.url <> "/api/blocks/#{block_index}"),
+           @http_client.get(server.url <> "/api/blocks/#{block_index}"),
          {:ok, _block} <- insert_block_from_network(block_response |> IO.inspect()) do
       :ok
     else
@@ -900,7 +901,7 @@ defmodule Kniffel.Blockchain do
 
   def request_not_confirmed_transactions_from_network(server_url) do
     with {:ok, %{"transactions" => transactions}} <-
-           Kniffel.request().get(server_url <> "/api/transactions", %{
+           @http_client.get(server_url <> "/api/transactions", %{
              "filter[confirmed]" => false
            }) do
       Enum.map(transactions, fn transaction_params ->

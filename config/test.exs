@@ -10,7 +10,7 @@ config :kniffel, KniffelWeb.Endpoint,
   server: false,
   secret_key_base: "UrwGy41yrDwJsejSAcTrlVTIbyAUDZzIT5LQheRbcE6tltjuHKSnONcHvlX9+BwY"
 
-config :kniffel, :request, Kniffel.Request.Sandbox
+config :kniffel, :request, Kniffel.RequestMock
 
 # Print only warnings and errors during test
 config :logger, level: :warn

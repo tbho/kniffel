@@ -1,13 +1,23 @@
 defmodule Kniffel.Request do
+
   require Logger
 
-  def get(url) do
-    HTTPoison.get(url, [
-      {"Content-Type", "application/json"}
-    ])
+  @callback get(url :: String.t()) :: {:ok, Map} | {:error, String.t()}
+  def get(url), do: get(url, %{})
+
+  @callback get(url :: String.t(), params :: Map.t()) :: {:ok, Map} | {:error, String.t()}
+  def get(url, params \\ %{}) do
+    HTTPoison.get(
+      url,
+      [
+        {"Content-Type", "application/json"}
+      ],
+      params: params
+    )
     |> handle_response
   end
 
+  @callback post(url :: String.t(), params :: Map.t()) :: {:ok, Map} | {:error, String.t()}
   def post(url, params) do
     HTTPoison.post(url, Poison.encode!(params), [
       {"Content-Type", "application/json"}
@@ -15,7 +25,8 @@ defmodule Kniffel.Request do
     |> handle_response
   end
 
-  def handle_response(response) do
+
+  defp handle_response(response) do
     with {:request, {:ok, response}} <- {:request, response},
          {:status_code, 200} <- {:status_code, response.status_code},
          #  true <- {"Content-Type", "application/json; charset=utf-8"} in response.headers,
