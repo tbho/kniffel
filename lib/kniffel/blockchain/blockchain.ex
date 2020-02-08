@@ -205,11 +205,9 @@ defmodule Kniffel.Blockchain do
   def commit_new_block() do
     last_block = get_last_block()
 
-    propose =
-      Kniffel.Cache.take({:propose, block_index: last_block.index + 1})
+    propose = Kniffel.Cache.take({:propose, block_index: last_block.index + 1})
 
-    propose_response =
-      Kniffel.Cache.take({:propose_response, block_index: last_block.index + 1})
+    propose_response = Kniffel.Cache.take({:propose_response, block_index: last_block.index + 1})
 
     if !is_nil(propose) && !is_nil(propose_response) do
       true = propose.pre_hash == last_block.hash
