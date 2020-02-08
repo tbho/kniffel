@@ -3,6 +3,7 @@ defmodule Kniffel.Blockchain.Block.Propose do
   alias Kniffel.{Blockchain, Server}
 
   @crypto_fields [:block_index, :pre_hash, :transactions, :server_id, :timestamp]
+  @crypto Application.get_env(:kniffel, :crypto)
 
   defstruct block_index: 0,
             pre_hash: '',
@@ -77,7 +78,7 @@ defmodule Kniffel.Blockchain.Block.Propose do
   defp change_attribute(%Propose{} = propose, _attrs, :server), do: propose
 
   defp change_attribute(%Propose{} = propose, _attrs, :signature) do
-    with {:ok, private_key} <- Crypto.private_key(),
+    with {:ok, private_key} <- @crypto.private_key(),
          {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key) do
       signature =
         Map.take(propose, @crypto_fields)
@@ -103,6 +104,9 @@ defmodule Kniffel.Blockchain.Block.Propose do
          :ok <- Crypto.verify(data_enc, server.public_key, propose.signature) do
       {:ok, propose}
     else
+      {:block, nil} ->
+        {:error, :last_block_not_found}
+
       {:server, nil} ->
         {:error, :server_unknown}
 

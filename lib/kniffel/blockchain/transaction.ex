@@ -58,7 +58,7 @@ defmodule Kniffel.Blockchain.Transaction do
   def sign_changeset(changeset, password) do
     with %Ecto.Changeset{} <- changeset,
          {_, user} <- fetch_field(changeset, :user),
-         {:ok, user} <- User.preload_private_key(user, password) do
+         %User{} = user <- User.preload_private_key(user, password) do
       signature =
         changeset
         |> take(@sign_fields)

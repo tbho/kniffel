@@ -30,15 +30,9 @@ defmodule Kniffel.Scheduler.ServerAge do
           %ServerAge{}
         )
 
-      IO.inspect(server_age)
-
       server_age = add_server_ages_not_in_blockchain(servers, server_age)
 
-      IO.inspect(server_age)
-
       server_age = %{server_age | checked_at_block: last_block.index}
-
-      IO.inspect(server_age)
 
       Kniffel.Cache.set(:server_age, server_age)
       server_age
@@ -77,8 +71,6 @@ defmodule Kniffel.Scheduler.ServerAge do
   end
 
   def update_server_ages(server_age) do
-    IO.inspect(server_age)
-
     blocks =
       Block
       |> order_by(desc: :index)
@@ -86,7 +78,6 @@ defmodule Kniffel.Scheduler.ServerAge do
       |> Repo.all()
 
     server_age = shift_server_ages(server_age, length(Enum.uniq_by(blocks, & &1.server_id)))
-    IO.inspect(server_age)
 
     {server_age, _offset} =
       Enum.reduce(blocks, {server_age, 0}, fn block, {server_age, offset} ->
@@ -94,17 +85,13 @@ defmodule Kniffel.Scheduler.ServerAge do
           server_age
           | ages:
               List.delete(server_age.ages, get_entry_by_server_id(server_age, block.server_id))
-              |> IO.inspect()
         }
 
         {%{server_age | ages: server_age.ages ++ [{block.server_id, offset}]}, offset + 1}
       end)
 
-    IO.inspect(server_age)
-
     servers = Server.get_authorized_servers()
     server_age = add_server_ages_not_in_blockchain(servers, server_age)
-    IO.inspect(server_age)
     last_block = Kniffel.Blockchain.get_last_block()
     server_age = %{server_age | checked_at_block: last_block.index}
 
@@ -146,16 +133,15 @@ defmodule Kniffel.Scheduler.ServerAge do
     Enum.find(server_age.ages, fn {server_id, _age} ->
       server_id == filter_server_id
     end)
-    |> IO.inspect()
   end
 
   def is_leader?(server_id) do
-    1 == get_position_in_server_queue(server_id) |> IO.inspect()
+    1 == get_position_in_server_queue(server_id)
   end
 
   def get_position_in_server_queue(server_id) do
     with server_age when not is_nil(server_age) <- get_server_age(),
-         server_ages <- Enum.sort_by(server_age.ages, &elem(&1, 1), &>=/2) |> IO.inspect() do
+         server_ages <- Enum.sort_by(server_age.ages, &elem(&1, 1), &>=/2) do
       {position, _changed} =
         Enum.reduce(server_ages, {1, false}, fn
           _position_result, {position, true} ->
@@ -233,12 +219,9 @@ defmodule Kniffel.Scheduler.ServerAge do
   end
 
   def compare(server_age1, server_age2) do
-    IO.inspect(server_age1)
-    IO.inspect(server_age2)
-
     with true <-
-           Enum.any?(server_age1.ages, fn age -> age in server_age2.ages end) |> IO.inspect(),
-         true <- server_age1.checked_at_block == server_age2.checked_at_block |> IO.inspect() do
+           Enum.any?(server_age1.ages, fn age -> age in server_age2.ages end),
+         true <- server_age1.checked_at_block == server_age2.checked_at_block do
       true
     else
       false ->

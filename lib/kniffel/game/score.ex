@@ -8,6 +8,7 @@ defmodule Kniffel.Game.Score do
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
+  @http_client Application.get_env(:kniffel, :request)
 
   schema "score" do
     field(:dices, :map)
@@ -38,17 +39,11 @@ defmodule Kniffel.Game.Score do
         end
       end)
 
-    {:ok, response} =
-      HTTPoison.post(
+    {:ok, %{"dices" => dices, "signature" => signature, "timestamp" => timestamp}} =
+      @http_client.post(
         server.url <> "/api/servers/roll",
-        Poison.encode!(%{dices_to_roll: dices_to_roll}),
-        [
-          {"Content-Type", "application/json"}
-        ]
+        %{dices_to_roll: dices_to_roll}
       )
-
-    %{"dices" => dices, "signature" => signature, "timestamp" => timestamp} =
-      Poison.decode!(response.body)
 
     attrs =
       attrs

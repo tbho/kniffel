@@ -161,7 +161,7 @@ defmodule Kniffel.User do
     end
   end
 
-  def create_user(user_params) do
+  def create_user(user_params, spread_to_network \\ true) do
     user =
       %User{}
       |> Repo.preload([:games, :scores, :transactions])
@@ -170,11 +170,13 @@ defmodule Kniffel.User do
 
     case user do
       {:ok, user} ->
-        servers = Server.get_servers(false)
+        if spread_to_network do
+          servers = Server.get_servers(false)
 
-        Enum.map(servers, fn server ->
-          @http_client.post(server.url <> "/api/users", %{user: User.json(user)})
-        end)
+          Enum.map(servers, fn server ->
+            @http_client.post(server.url <> "/api/users", %{user: User.json(user)})
+          end)
+        end
 
         {:ok, user}
 

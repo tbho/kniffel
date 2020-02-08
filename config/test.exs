@@ -11,6 +11,8 @@ config :kniffel, KniffelWeb.Endpoint,
   secret_key_base: "UrwGy41yrDwJsejSAcTrlVTIbyAUDZzIT5LQheRbcE6tltjuHKSnONcHvlX9+BwY"
 
 config :kniffel, :request, Kniffel.RequestMock
+config :kniffel, :crypto, Kniffel.CryptoMock
+config :kniffel, :round_endpoint, Kniffel.BlockchainMock
 
 # Print only warnings and errors during test
 config :logger, level: :warn

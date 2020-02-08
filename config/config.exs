@@ -35,7 +35,14 @@ config :phoenix, :template_engines,
 
 # config :kniffel, Kniffel.Cache,
 
-config :kniffel, :request, Kniffel.Request.HTTPoison
+config :kniffel,
+  request: Kniffel.Request,
+  crypto: Kniffel.Blockchain.Crypto,
+  round_endpoint: Kniffel.Blockchain
+
+config :kniffel,
+  block_transaction_limit: 10,
+  active_server_treshhold: 10
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

@@ -37,7 +37,7 @@ defmodule Kniffel.User.Session do
   end
 
   @doc false
-  @spec changeset(Session.t(), map) :: Ecto.Changeset.t()
+  @spec changeset(Kniffel.Session.t(), map) :: Ecto.Changeset.t()
   defp changeset(session, %{refresh_token: false} = attrs) do
     session
     |> cast(attrs, [:user_agent, :ip])
@@ -63,7 +63,7 @@ defmodule Kniffel.User.Session do
   @access_token_validity 24 * 60 * 60
 
   @doc "Returns wether a session has a valid access token."
-  @spec valid_access_token?(Session.t(), String.t()) :: boolean
+  @spec valid_access_token?(Kniffel.Session.t(), String.t()) :: boolean
   defp valid_access_token?(_, nil), do: false
 
   defp valid_access_token?(session, access_token) do
@@ -76,7 +76,7 @@ defmodule Kniffel.User.Session do
   @refresh_token_validity 90 * 24 * 60 * 60
 
   @doc "Returns wether a session's refresh token is valid."
-  @spec valid_refresh_token?(Session.t(), String.t()) :: boolean
+  @spec valid_refresh_token?(Kniffel.Session.t(), String.t()) :: boolean
   defp valid_refresh_token?(_, nil), do: false
 
   defp valid_refresh_token?(session, refresh_token) do
@@ -97,7 +97,7 @@ defmodule Kniffel.User.Session do
   a new set of tokens which will be included in the returned session.
   """
   @spec verify_session(String.t() | nil, String.t() | nil) ::
-          {:ok, Session.t()} | {:error, String.t()}
+          {:ok, Kniffel.Session.t()} | {:error, String.t()}
   def verify_session(access_token, refresh_token)
 
   def verify_session(nil, nil) do
@@ -107,21 +107,21 @@ defmodule Kniffel.User.Session do
   def verify_session(access_token, refresh_token) do
     query = preload(Session, :user)
 
-    query = case {access_token, refresh_token} do
-      {nil, refresh_token} ->
-        query
-        |> where(refresh_token: ^refresh_token)
+    query =
+      case {access_token, refresh_token} do
+        {nil, refresh_token} ->
+          query
+          |> where(refresh_token: ^refresh_token)
 
-      {access_token, nil} ->
-        query
-        |> where(access_token: ^access_token)
+        {access_token, nil} ->
+          query
+          |> where(access_token: ^access_token)
 
-      {access_token, refresh_token} ->
-        query
-        |> where(access_token: ^access_token)
-        |> or_where(refresh_token: ^refresh_token)
-
-    end
+        {access_token, refresh_token} ->
+          query
+          |> where(access_token: ^access_token)
+          |> or_where(refresh_token: ^refresh_token)
+      end
 
     session = Repo.one(query)
 
@@ -153,13 +153,14 @@ defmodule Kniffel.User.Session do
   # end
 
   @doc "Fetches a session"
-  @spec get_session!(String.t()) :: Session.t()
+  @spec get_session!(String.t()) :: Kniffel.Session.t()
   def get_session!(id) do
-    Repo.get!(Session, id)
+    Repo.get!(Kniffel.Session, id)
   end
 
   @doc "Creates a session for a user identified by email and password"
-  @spec create_session(String.t(), String.t(), Map.t()) :: {:ok, Session.t()} | {:error, atom}
+  @spec create_session(String.t(), String.t(), Map.t()) ::
+          {:ok, Kniffel.Session.t()} | {:error, atom}
   def create_session(user_name, password, params) do
     with {:ok, user} <-
            User
@@ -179,7 +180,7 @@ defmodule Kniffel.User.Session do
   end
 
   @doc "Creates a session for a user *without verifying its password."
-  @spec create_session(User.t(), Map.t()) :: {:ok, Session.t()} | {:error, atom}
+  @spec create_session(User.t(), Map.t()) :: {:ok, Kniffel.Session.t()} | {:error, atom}
   def create_session(user, params) do
     user
     |> Ecto.build_assoc(:sessions)
@@ -188,7 +189,7 @@ defmodule Kniffel.User.Session do
   end
 
   @doc "Delete session"
-  @spec delete_session(Session.t()) :: {:ok, Session.t()}
+  @spec delete_session(Kniffel.GameSession.t()) :: {:ok, Kniffel.Session.t()}
   def delete_session(session) do
     Repo.delete(session)
   end

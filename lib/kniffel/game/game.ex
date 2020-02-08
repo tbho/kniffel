@@ -155,6 +155,11 @@ defmodule Kniffel.Game do
     |> Repo.all()
   end
 
+  def get_games() do
+    Game
+    |> Repo.all()
+  end
+
   def get_game(id, preload \\ []) do
     Game
     |> Repo.get(id)

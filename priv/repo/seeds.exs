@@ -30,7 +30,7 @@ case Server.get_server(id) do
 
   nil ->
     %Server{}
-    |> Server.cast_changeset(%{
+    |> Server.change_server(%{
       "url" => System.get_env("URL"),
       "public_key" => pem_string,
       "authority" => false,
@@ -40,7 +40,7 @@ case Server.get_server(id) do
 end
 
 url = "http://hoge.cloud:3000"
-url = "https://kniffel.app"
+# url = "https://kniffel.app"
 
 from(s in Server, where: s.url == ^url, update: [set: [authority: true]])
 |> Repo.update_all([])
@@ -50,8 +50,8 @@ case Server.get_server_by_url(url) do
     server
 
   nil ->
-    with {:ok, %{"server" => server}} <- @http_client.get(url <> "/api/servers/this"),
-         %Ecto.Changeset{} = changeset <- Server.cast_changeset(%Server{}, server),
+    with {:ok, %{"server" => server}} <- Request.get(url <> "/api/servers/this"),
+         %Ecto.Changeset{} = changeset <- Server.change_server(%Server{}, server),
          {:ok, server} <- Repo.insert(changeset) do
       server
     else

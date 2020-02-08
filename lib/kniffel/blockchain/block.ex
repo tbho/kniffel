@@ -13,6 +13,8 @@ defmodule Kniffel.Blockchain.Block do
   @primary_key {:index, :id, autogenerate: false}
   @foreign_key_type :id
 
+  @crypto Application.get_env(:kniffel, :crypto)
+
   schema "block" do
     field :pre_hash, :string
     field :proof, :integer, default: 1
@@ -53,7 +55,7 @@ defmodule Kniffel.Blockchain.Block do
   end
 
   def sign_changeset(%Ecto.Changeset{} = changeset) do
-    with {:ok, private_key} <- Crypto.private_key(),
+    with {:ok, private_key} <- @crypto.private_key(),
          {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key),
          {:ok, rsa_pub_key} <- ExPublicKey.public_key_from_private_key(private_key),
          server_id <- ExPublicKey.RSAPublicKey.get_fingerprint(rsa_pub_key) do

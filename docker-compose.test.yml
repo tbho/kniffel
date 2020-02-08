@@ -7,7 +7,7 @@ services:
       args:
         ENV: test
       target: app
-    command: sh -c "mix deps.get && mix test.watch --stale"
+    command: sh -c "mix deps.get && mix test.watch --exclude load_test"
     depends_on:
       - db
       - sync
@@ -28,6 +28,7 @@ services:
     depends_on:
       - sync
     command: sh -c "yarn install && yarn run watch"
+
 
   db:
     image: postgres:10.3-alpine

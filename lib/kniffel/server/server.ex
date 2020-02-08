@@ -15,6 +15,7 @@ defmodule Kniffel.Server do
 
   @server_white_list ["https://kniffel.app", "http://hoge.cloud:3000", "https://tobiashoge.de"]
   @http_client Application.get_env(:kniffel, :request)
+  @crypto Application.get_env(:kniffel, :crypto)
 
   schema "server" do
     field :url, :string
@@ -106,7 +107,7 @@ defmodule Kniffel.Server do
         server
 
       nil ->
-        {:ok, private_key} = Crypto.private_key()
+        {:ok, private_key} = @crypto.private_key()
         {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
         server_id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
 
@@ -124,9 +125,8 @@ defmodule Kniffel.Server do
            @http_client.post(url <> "/api/servers", %{
              server: %{url: Server.get_this_server().url}
            }) do
-            IO.inspect(server)
       if server.authority do
-        servers = get_authorized_servers(false) |> IO.inspect
+        servers = get_authorized_servers(false)
 
         Enum.map(servers, fn server ->
           @http_client.post(server.url <> "/api/servers", %{server: %{url: url}})
@@ -160,7 +160,7 @@ defmodule Kniffel.Server do
   end
 
   def roll_dices(dices_to_roll) do
-    with {:ok, private_key} <- Crypto.private_key(),
+    with {:ok, private_key} <- @crypto.private_key(),
          {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key) do
       dices =
         dices_to_roll
@@ -169,7 +169,10 @@ defmodule Kniffel.Server do
         end)
         |> Map.new()
 
-      timestamp = Timex.now() |> DateTime.truncate(:second) |> Timex.format!("{ISO:Extended}")
+      timestamp =
+        Timex.now()
+        |> DateTime.truncate(:second)
+        |> Timex.format!("{ISO:Extended}")
 
       signature =
         Poison.encode!(%{"dices" => dices, "timestamp" => timestamp})
@@ -183,7 +186,7 @@ defmodule Kniffel.Server do
 
   def add_this_server_to_master_server() do
     with %Server{} = this_server <- Server.get_this_server(),
-         %Server{} = master_server <- Server.get_server_by_url("https://kniffel.app"),
+         %Server{} = master_server <- Server.get_server_by_url("http://hoge.cloud:3000"),
          {:ok, %{"server" => server}} <-
            @http_client.post(master_server.url <> "/api/servers", %{
              server: %{url: this_server.url}

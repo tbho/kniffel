@@ -26,6 +26,7 @@ defmodule Kniffel.Blockchain.Crypto do
     end
   end
 
+  @callback private_key() :: {:ok, ExPublicKey.RSAPrivateKey.t()} | {:error, Atom.t()}
   def private_key() do
     System.get_env("PRIV_KEY_PATH")
     |> ExPublicKey.load()

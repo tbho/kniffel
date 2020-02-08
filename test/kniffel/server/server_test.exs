@@ -5,6 +5,8 @@ defmodule Kniffel.ServerTest do
 
   import Kniffel.Factory
 
+  import Mox
+
   def start_cache(_context) do
     start_supervised(Kniffel.Cache)
     :ok
@@ -30,70 +32,97 @@ defmodule Kniffel.ServerTest do
 
   setup :start_cache
   setup :insert_this_server
+  setup :verify_on_exit!
 
   describe "Server.create_server" do
     test "server_created" do
-      server_url = "example.com"
-      server = insert(:server, url: "https://kniffel.app", authority: true)
-      server = insert(:server, authority: false)
+      insert(:server, url: "https://kniffel.app", authority: true)
+      insert(:server, authority: false)
 
       server_key = Kniffel.CryptoHelper.create_rsa_key()
 
-      Kniffel.Cache.set({server_url, "/api/servers/this"}, {:ok, %{"server" => %{"id" => server_key.id, "url" => "https://" <> server_url, "public_key" => server_key.public_pem_string, "authority" => true}}})
+      Kniffel.RequestMock
+      |> expect(:get, fn "https://example.com/api/servers/this" ->
+        {:ok,
+         %{
+           "server" => %{
+             "id" => server_key.id,
+             "url" => "https://example.com",
+             "public_key" => server_key.public_pem_string,
+             "authority" => true
+           }
+         }}
+      end)
 
-      Kniffel.Cache.set({server_url, "/api/servers"}, {:ok, "Server already known."})
-
-      Kniffel.Cache.set({server_url, "/api/servers", :params}, %{
-        server: %{
-          url: System.get_env("URL")
-        }
-      })
+      Kniffel.RequestMock
+      |> expect(:post, fn "https://example.com/api/servers",
+                          %{
+                            server: %{
+                              url: "http://hoge.cloud:3000"
+                            }
+                          } ->
+        {:ok, "Server already known."}
+      end)
 
       Server.create_server(%{
-        "url" => "https://" <> server_url
+        "url" => "https://example.com"
       })
     end
   end
 
   describe "Server.create_authority_server" do
     test "server_created" do
-      server_url = "tobiashoge.de"
-      server = insert(:server, url: "https://kniffel.app", authority: true)
+      insert(:server, url: "https://kniffel.app", authority: true)
       insert(:server, authority: false)
-
-      IO.inspect(Server.get_servers())
+      insert(:block)
 
       server_key = Kniffel.CryptoHelper.create_rsa_key()
 
-      Kniffel.Cache.set({server_url, "/api/servers/this"}, {:ok, %{"server" => %{"id" => server_key.id, "url" => "https://" <> server_url, "public_key" => server_key.public_pem_string, "authority" => true}}})
+      Kniffel.RequestMock
+      |> expect(:get, fn "https://tobiashoge.de/api/servers/this" ->
+        {:ok,
+         %{
+           "server" => %{
+             "id" => server_key.id,
+             "url" => "https://tobiashoge.de",
+             "public_key" => server_key.public_pem_string,
+             "authority" => true
+           }
+         }}
+      end)
 
-      Kniffel.Cache.set({server_url, "/api/servers"}, {:ok, "Server already known."})
+      Kniffel.RequestMock
+      |> expect(:post, fn "https://tobiashoge.de/api/servers",
+                          %{
+                            server: %{
+                              url: "http://hoge.cloud:3000"
+                            }
+                          } ->
+        {:ok, "Server already known."}
+      end)
 
-      Kniffel.Cache.set({server_url, "/api/servers", :params}, %{
-        server: %{
-          url: System.get_env("URL")
-        }
-      })
+      Kniffel.RequestMock
+      |> expect(:post, fn "https://kniffel.app/api/servers",
+                          %{
+                            server: %{
+                              url: "https://tobiashoge.de"
+                            }
+                          } ->
+        {:ok, "Server already known."}
+      end)
 
-
-
-      Kniffel.Cache.set({"kniffel.app", "/api/servers", :params}, %{
-        server: %{
-          url: "https://" <> server_url
-        }
-      })
-      Kniffel.Cache.set({"tobiashoge.de", "/api/servers", :params}, %{
-        server: %{
-          url: "https://" <> server_url
-        }
-      })
-
-      Kniffel.Cache.set({"kniffel.app", "/api/servers"}, {:ok, "Server already known."})
-
-      Kniffel.Cache.set({"tobiashoge.de", "/api/servers"}, {:ok, "Server already known."})
+      Kniffel.RequestMock
+      |> expect(:post, fn "https://tobiashoge.de/api/servers",
+                          %{
+                            server: %{
+                              url: "https://tobiashoge.de"
+                            }
+                          } ->
+        {:ok, "Server already known."}
+      end)
 
       Server.create_server(%{
-        "url" => "https://" <> server_url
+        "url" => "https://tobiashoge.de"
       })
     end
   end

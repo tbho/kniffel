@@ -3,7 +3,7 @@ defmodule KniffelWeb.BlockController do
 
   alias Kniffel.{Blockchain, Server, Scheduler}
   alias Kniffel.Scheduler.{RoundSpecification, ServerAge}
-  alias Kniffel.Blockchain.Block.{Propose, ServerResponse}
+  alias Kniffel.Blockchain.Block.{Propose, ProposeResponse}
 
   def index(conn, _params) do
     blocks = Blockchain.get_blocks()
@@ -26,15 +26,15 @@ defmodule KniffelWeb.BlockController do
         |> Propose.change()
         |> Blockchain.validate_block_proposal()
 
-      json(conn, %{propose_response: ServerResponse.json(propose_response)})
+      json(conn, %{propose_response: ProposeResponse.json(propose_response)})
     else
       error_response =
         Map.new()
         |> Map.put(:error, :wrong_round_number)
         |> Map.put(:server, Server.get_this_server())
-        |> ServerResponse.change()
+        |> ProposeResponse.change()
 
-      json(conn, %{propose_response: ServerResponse.json(error_response)})
+      json(conn, %{propose_response: ProposeResponse.json(error_response)})
     end
   end
 
@@ -44,16 +44,10 @@ defmodule KniffelWeb.BlockController do
     %{round_number: round_number} = RoundSpecification.get_round_specification()
 
     if round_number == round_specification["round_number"] do
-      block_response = Blockchain.insert_block(block_params)
-      json(conn, %{block_response: ServerResponse.json(block_response)})
+      response = Blockchain.validate_and_insert_block(block_params)
+      json(conn, response)
     else
-      error_response =
-        Map.new()
-        |> Map.put(:error, :wrong_round_number)
-        |> Map.put(:server, Server.get_this_server())
-        |> ServerResponse.change()
-
-      json(conn, %{propose_response: ServerResponse.json(error_response)})
+      json(conn, %{error: :wrong_round_number})
     end
   end
 

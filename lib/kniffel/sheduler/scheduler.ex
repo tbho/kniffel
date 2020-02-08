@@ -261,7 +261,7 @@ defmodule Kniffel.Scheduler do
       reason: reason
     }
 
-    with {:ok, private_key} <- Crypto.private_key(),
+    with {:ok, private_key} <- @crypto.private_key(),
          {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key) do
       signature =
         data
@@ -320,7 +320,7 @@ defmodule Kniffel.Scheduler do
       reason: reason
     }
 
-    with {:ok, private_key} <- Crypto.private_key(),
+    with {:ok, private_key} <- @crypto.private_key(),
          {:ok, private_key_pem} <- ExPublicKey.pem_encode(private_key) do
       signature =
         data

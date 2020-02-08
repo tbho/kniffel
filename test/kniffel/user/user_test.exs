@@ -33,20 +33,21 @@ defmodule Kniffel.UserTest do
   setup :insert_this_server
   setup :verify_on_exit!
 
-
   describe "User.get_user_from_server" do
     test "request_ok user_inserted" do
       user_key = Kniffel.CryptoHelper.create_rsa_key()
 
       Kniffel.RequestMock
-      |> expect(:get, fn "https://kniffel.app/api/users/" <> id  -> {:ok,
-      %{
-        "user" => %{
-          "id" => user_key.id,
-          "user_name" => "tbho",
-          "public_key" => user_key.public_pem_string
-        }
-       }} end)
+      |> expect(:get, fn "https://kniffel.app/api/users/" <> _id ->
+        {:ok,
+         %{
+           "user" => %{
+             "id" => user_key.id,
+             "user_name" => "tbho",
+             "public_key" => user_key.public_pem_string
+           }
+         }}
+      end)
 
       assert %User{} = User.get_user_from_server(user_key.id, "https://kniffel.app")
 
@@ -57,10 +58,12 @@ defmodule Kniffel.UserTest do
       user_key = Kniffel.CryptoHelper.create_rsa_key()
 
       Kniffel.RequestMock
-      |> expect(:get, fn "https://kniffel.app/api/users/" <> id  -> {:error,
-      %{
-        error: "not_found"
-      }} end)
+      |> expect(:get, fn "https://kniffel.app/api/users/" <> _id ->
+        {:error,
+         %{
+           error: "not_found"
+         }}
+      end)
 
       User.get_user_from_server(user_key.id, "https://kniffel.app")
     end
@@ -68,16 +71,19 @@ defmodule Kniffel.UserTest do
 
   describe "User.create_user" do
     test "user_created" do
-      server = insert(:server)
+      insert(:server)
 
       Kniffel.RequestMock
-      |> expect(:post, fn "https://test.de/api/users",  %{
-        user: %{
-          id: id,
-          user_name: "tbho",
-          public_key: pub
-        }} -> {:ok, "accept"} end)
-
+      |> expect(:post, fn "https://test.de/api/users",
+                          %{
+                            user: %{
+                              id: _id,
+                              user_name: "tbho",
+                              public_key: _pub
+                            }
+                          } ->
+        {:ok, "accept"}
+      end)
 
       User.create_user(%{
         "private_key" => "",
@@ -88,17 +94,21 @@ defmodule Kniffel.UserTest do
     end
 
     test "user_created with own private key" do
-      server = insert(:server)
+      insert(:server)
 
       user_key = Kniffel.CryptoHelper.create_rsa_key()
 
       Kniffel.RequestMock
-      |> expect(:post, fn "https://test.de/api/users",  %{
-        user: %{
-          id: id,
-          user_name: "tbho",
-          public_key: pub
-        }} -> {:ok, "accept"} end)
+      |> expect(:post, fn "https://test.de/api/users",
+                          %{
+                            user: %{
+                              id: _id,
+                              user_name: "tbho",
+                              public_key: _pub
+                            }
+                          } ->
+        {:ok, "accept"}
+      end)
 
       User.create_user(%{
         "private_key" => user_key.private_pem_string,
@@ -149,8 +159,8 @@ defmodule Kniffel.UserTest do
 
   describe "User.get_users" do
     test "ok" do
-      user1 = insert(:private_user)
-      user2 = insert(:private_user, %{user_name: "test"})
+      insert(:private_user)
+      insert(:private_user, %{user_name: "test"})
 
       result = User.get_users()
       assert Enum.count(result) == 2
