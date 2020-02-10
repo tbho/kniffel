@@ -7,7 +7,7 @@ services:
       args:
         ENV: test
       target: app
-    command: sh -c "mix deps.get && mix test.watch --exclude load_test"
+    command: sh -c "mix deps.get && mix test.watch --exclude load"
     depends_on:
       - db
       - sync

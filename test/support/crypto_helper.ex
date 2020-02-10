@@ -13,6 +13,7 @@ defmodule Kniffel.CryptoHelper do
 
   def generate_fields_from_rsa_key(private_key) do
     {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
+
     {:ok, private_pem_string} = ExPublicKey.pem_encode(private_key)
     {:ok, public_pem_string} = ExPublicKey.pem_encode(public_key)
     id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)

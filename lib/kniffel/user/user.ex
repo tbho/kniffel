@@ -152,7 +152,7 @@ defmodule Kniffel.User do
   def get_user_from_server(id, server_url) do
     with {:ok, %{"user" => user_params}} <-
            @http_client.get(server_url <> "/api/users/#{id}"),
-         {:ok, user} = create_user(user_params) do
+         {:ok, user} = create_user(user_params, false) do
       user
     else
       {:error, error} ->

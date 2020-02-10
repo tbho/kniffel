@@ -6,12 +6,12 @@ defmodule Kniffel.LoadTest do
   import Kniffel.Factory
   import Mox
 
-  def start_cache(_context) do
-    start_supervised(Kniffel.Cache)
+  def flush_cache(_context) do
+    Kniffel.Cache.flush()
     :ok
   end
 
-  setup :start_cache
+  setup :flush_cache
   setup :set_mox_global
 
   def create_this_server() do
@@ -76,7 +76,7 @@ defmodule Kniffel.LoadTest do
     {user_key, user}
   end
 
-  @tag :load_test
+  @tag :load
   @tag timeout: :infinity
   test "benchmark_propose_to_server" do
     transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
@@ -149,7 +149,7 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag :load_test
+  @tag :load
   @tag timeout: :infinity
   test "benchmark_validate_block_proposal" do
     transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
@@ -222,7 +222,7 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag :load_test
+  @tag :load
   @tag timeout: :infinity
   test "benchmark_propose_new_block" do
     transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
@@ -274,7 +274,7 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag :load_test
+  @tag :load
   @tag timeout: :infinity
   test "benchmark_commit_to_server" do
     Kniffel.Scheduler.RoundSpecification.set_round_specification(
@@ -312,7 +312,7 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag :load_test
+  @tag :load
   @tag timeout: :infinity
   test "benchmark_validate_and_insert_block" do
     transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
@@ -418,7 +418,7 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag :load_test
+  @tag :load
   @tag timeout: :infinity
   test "benchmark_commit_new_block" do
     transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
@@ -495,6 +495,275 @@ defmodule Kniffel.LoadTest do
           [propose_response]
         )
       end,
+      time: 10,
+      memory_time: 2
+    )
+  end
+
+  @tag :load
+  @tag timeout: :infinity
+  test "benchmark_finalize_to_server" do
+    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
+
+    {server_key, server} = create_server(true)
+    {_this_server_key, this_server} = create_this_server()
+    {user_key, user} = insert_user()
+    Kniffel.Blockchain.genesis()
+
+    server_age = Kniffel.Scheduler.ServerAge.get_server_age()
+    round_specification = Kniffel.Scheduler.RoundSpecification.get_default_round_specification()
+
+    last_block = Kniffel.Blockchain.get_last_block()
+
+    timestamp = Timex.now() |> Timex.format!("{ISO:Extended}")
+    data = Poison.encode!(%{"games" => [], "scores" => []})
+
+    signature =
+      %{data: data, timestamp: timestamp}
+      |> Poison.encode!()
+      |> Kniffel.Blockchain.Crypto.sign(user_key.private_pem_string)
+
+    transactions =
+      insert_list(transaction_block_limit, :not_correct_signed_transaction, %{
+        user_id: user.id,
+        signature: signature,
+        data: data,
+        timestamp: timestamp
+      })
+
+    propose =
+      Map.new()
+      |> Map.put(:transactions, transactions)
+      |> Map.put(:block, last_block)
+      |> Map.put(:server, this_server)
+      |> Kniffel.Blockchain.Block.Propose.change()
+
+    signature =
+      %{hash: Kniffel.Blockchain.Block.Propose.hash(propose), error: :none}
+      |> Poison.encode!()
+      |> Kniffel.Blockchain.Crypto.sign(server_key.private_pem_string)
+
+    propose_response = %Kniffel.Blockchain.Block.ProposeResponse{
+      server_id: server.id,
+      hash: Kniffel.Blockchain.Block.Propose.hash(propose),
+      signature: signature
+    }
+
+    transaction_data =
+      Enum.map(transactions, fn transaction ->
+        Map.take(transaction, [:id, :signature, :timestamp, :server_id, :game_id, :data])
+      end)
+
+    data =
+      Poison.encode!(%{
+        "propose" => propose,
+        "propose_response" => [propose_response],
+        "transactions" => transaction_data
+      })
+
+    block = build(:signed_block, %{data: data, block: last_block, transactions: transactions})
+
+    stub(Kniffel.RequestMock, :post, fn _server_url,
+                                        %{
+                                          block_height: _block_height,
+                                          round_specification: _round_specification,
+                                          server_age: _server_age
+                                        } ->
+      {:ok,
+       %{
+         "ok" => "accept"
+       }}
+    end)
+
+    Benchee.run(
+      %{
+        "finalize_to_server" => fn {block, server, this_server, round_specification, server_age} ->
+          Kniffel.Blockchain.finalize_to_server(
+            block,
+            server,
+            this_server,
+            round_specification,
+            server_age
+          )
+        end
+      },
+      after_each: fn result ->
+        assert :ok = result
+      end,
+      inputs: %{"test" => {block, server, this_server, round_specification, server_age}},
+      time: 10,
+      memory_time: 2
+    )
+  end
+
+  @tag :load
+  @tag timeout: :infinity
+  test "benchmark_finalize_block" do
+    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
+
+    {server_key, server} = create_server(true)
+    {_this_server_key, this_server} = create_this_server()
+    {user_key, user} = insert_user()
+    Kniffel.Blockchain.genesis()
+
+    Kniffel.Scheduler.RoundSpecification.set_next_round_specification(
+      Kniffel.Scheduler.RoundSpecification.get_default_round_specification()
+    )
+
+    server_age = Kniffel.Scheduler.ServerAge.get_server_age(true)
+
+    last_block = Kniffel.Blockchain.get_last_block()
+
+    timestamp = Timex.now() |> Timex.format!("{ISO:Extended}")
+    data = Poison.encode!(%{"games" => [], "scores" => []})
+
+    signature =
+      %{data: data, timestamp: timestamp}
+      |> Poison.encode!()
+      |> Kniffel.Blockchain.Crypto.sign(user_key.private_pem_string)
+
+    transactions =
+      insert_list(transaction_block_limit, :not_correct_signed_transaction, %{
+        user_id: user.id,
+        signature: signature,
+        data: data,
+        timestamp: timestamp
+      })
+
+    propose =
+      Map.new()
+      |> Map.put(:transactions, transactions)
+      |> Map.put(:block, last_block)
+      |> Map.put(:server, this_server)
+      |> Kniffel.Blockchain.Block.Propose.change()
+
+    signature =
+      %{hash: Kniffel.Blockchain.Block.Propose.hash(propose), error: :none}
+      |> Poison.encode!()
+      |> Kniffel.Blockchain.Crypto.sign(server_key.private_pem_string)
+
+    propose_response = %Kniffel.Blockchain.Block.ProposeResponse{
+      server_id: server.id,
+      hash: Kniffel.Blockchain.Block.Propose.hash(propose),
+      signature: signature
+    }
+
+    transaction_data =
+      Enum.map(transactions, fn transaction ->
+        Map.take(transaction, [:id, :signature, :timestamp, :server_id, :game_id, :data])
+      end)
+
+    data =
+      Poison.encode!(%{
+        "propose" => propose,
+        "propose_response" => [propose_response],
+        "transactions" => transaction_data
+      })
+
+    block = insert(:signed_block, %{data: data, block: last_block, transactions: transactions})
+
+    Kniffel.Cache.set({:block, block_index: last_block.index}, block)
+
+    stub(Kniffel.BlockchainMock, :finalize_to_server, fn _block,
+                                                         _server,
+                                                         _this_server,
+                                                         _round_specification,
+                                                         _server_age ->
+      nil
+    end)
+
+    Benchee.run(
+      %{
+        "finalize_block" => fn ->
+          Kniffel.Blockchain.finalize_block()
+        end
+      },
+      after_each: fn result ->
+        assert :ok = result
+      end,
+      time: 10,
+      memory_time: 2
+    )
+  end
+
+  @tag :load
+  @tag timeout: :infinity
+  test "benchmark_handle_height_change" do
+    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
+
+    {user_key, user} = insert_user()
+    {_this_server_key, this_server} = create_this_server()
+    {server_key, server} = create_server(true) |> IO.inspect()
+
+    {:ok, genesis} = Kniffel.Blockchain.genesis()
+    last_block = insert(:block, %{server_id: server.id, index: 1, pre_hash: genesis.hash})
+
+    server_age = Kniffel.Scheduler.ServerAge.get_server_age(true) |> IO.inspect()
+
+    Kniffel.Scheduler.RoundSpecification.set_round_specification(
+      Kniffel.Scheduler.RoundSpecification.get_default_round_specification()
+    )
+
+    timestamp = Timex.now() |> Timex.format!("{ISO:Extended}")
+    data = Poison.encode!(%{"games" => [], "scores" => []})
+
+    signature =
+      %{data: data, timestamp: timestamp}
+      |> Poison.encode!()
+      |> Kniffel.Blockchain.Crypto.sign(user_key.private_pem_string)
+
+    transactions =
+      insert_list(transaction_block_limit, :not_correct_signed_transaction, %{
+        user_id: user.id,
+        signature: signature,
+        data: data,
+        timestamp: timestamp
+      })
+
+    propose =
+      Map.new()
+      |> Map.put(:transactions, transactions)
+      |> Map.put(:block, last_block)
+      |> Map.put(:server, this_server)
+      |> Kniffel.Blockchain.Block.Propose.change()
+
+    signature =
+      %{hash: Kniffel.Blockchain.Block.Propose.hash(propose), error: :none}
+      |> Poison.encode!()
+      |> Kniffel.Blockchain.Crypto.sign(server_key.private_pem_string)
+
+    propose_response = %Kniffel.Blockchain.Block.ProposeResponse{
+      server_id: server.id,
+      hash: Kniffel.Blockchain.Block.Propose.hash(propose),
+      signature: signature
+    }
+
+    transaction_data =
+      Enum.map(transactions, fn transaction ->
+        Map.take(transaction, [:id, :signature, :timestamp, :server_id, :game_id, :data])
+      end)
+
+    data =
+      Poison.encode!(%{
+        "propose" => propose,
+        "propose_response" => [propose_response],
+        "transactions" => transaction_data
+      })
+
+    block = insert(:signed_block, %{data: data, block: last_block, transactions: transactions})
+
+    Benchee.run(
+      %{
+        "handle_height_change" => fn params ->
+          Kniffel.Blockchain.handle_height_change(params)
+        end
+      },
+      after_each: fn result ->
+        assert {:ok, :accept} = result
+      end,
+      inputs: %{
+        "test" => %{"server_id" => this_server.id, "hash" => block.hash, "index" => block.index}
+      },
       time: 10,
       memory_time: 2
     )

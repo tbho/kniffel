@@ -365,36 +365,57 @@ defmodule Kniffel.Blockchain do
 
   def finalize_block() do
     last_block = get_last_block()
+
     block = Kniffel.Cache.take({:block, block_index: last_block.index})
 
+    round_specification =
+      RoundSpecification.json(RoundSpecification.get_next_round_specification())
+
+    server_age = ServerAge.json(ServerAge.update_server_ages(ServerAge.get_server_age()))
     this_server = Server.get_this_server()
 
     Server.get_authorized_servers(false)
     |> Enum.map(fn server ->
-      with {:ok, %{"ok" => "accept"}} <-
-             @http_client.post(
-               server.url <> "/api/blocks/finalize",
-               %{
-                 block_height: %{
-                   index: block.index,
-                   timestamp: block.timestamp,
-                   server_id: this_server.id,
-                   hash: block.hash
-                 },
-                 round_specification:
-                   RoundSpecification.json(RoundSpecification.get_next_round_specification()),
-                 server_age:
-                   ServerAge.json(ServerAge.update_server_ages(ServerAge.get_server_age()))
-               }
-             ) do
-        :ok
-      else
-        {:error, error} ->
-          {:error, error}
-      end
+      @round_endpoint.finalize_to_server(
+        block,
+        server,
+        this_server,
+        round_specification,
+        server_age
+      )
     end)
 
     :ok
+  end
+
+  @callback finalize_to_server(
+              Block.t(),
+              Server.t(),
+              Server.t(),
+              RoundSpecification.t(),
+              ServerAge.t()
+            ) ::
+              :ok | {:error, String.t()} | {:error, Atom.t()}
+  def finalize_to_server(block, server, this_server, round_specification, server_age) do
+    with {:ok, %{"ok" => "accept"}} <-
+           @http_client.post(
+             server.url <> "/api/blocks/finalize",
+             %{
+               block_height: %{
+                 index: block.index,
+                 timestamp: block.timestamp,
+                 server_id: this_server.id,
+                 hash: block.hash
+               },
+               round_specification: round_specification,
+               server_age: server_age
+             }
+           ) do
+      :ok
+    else
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   def handle_height_change(%{

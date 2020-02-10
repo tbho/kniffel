@@ -7,37 +7,19 @@ defmodule Kniffel.ServerTest do
 
   import Mox
 
-  def start_cache(_context) do
-    start_supervised(Kniffel.Cache)
+  def flush_cache(_context) do
+    Kniffel.Cache.flush()
     :ok
   end
 
-  def insert_this_server(_context) do
-    {:ok, private_key} = Kniffel.Blockchain.Crypto.private_key()
-    {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
-    {:ok, pem_string} = ExPublicKey.pem_encode(public_key)
-    id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
-
-    %Kniffel.Server{}
-    |> Kniffel.Server.change_server(%{
-      "url" => System.get_env("URL"),
-      "public_key" => pem_string,
-      "authority" => false,
-      "id" => id
-    })
-    |> Repo.insert()
-
-    :ok
-  end
-
-  setup :start_cache
-  setup :insert_this_server
+  setup :flush_cache
   setup :verify_on_exit!
 
   describe "Server.create_server" do
     test "server_created" do
+      insert(:this_server)
       insert(:server, url: "https://kniffel.app", authority: true)
-      insert(:server, authority: false)
+      insert(:server)
 
       server_key = Kniffel.CryptoHelper.create_rsa_key()
 
@@ -58,7 +40,7 @@ defmodule Kniffel.ServerTest do
       |> expect(:post, fn "https://example.com/api/servers",
                           %{
                             server: %{
-                              url: "http://hoge.cloud:3000"
+                              url: "https://tobiashoge.de"
                             }
                           } ->
         {:ok, "Server already known."}
@@ -72,19 +54,22 @@ defmodule Kniffel.ServerTest do
 
   describe "Server.create_authority_server" do
     test "server_created" do
-      insert(:server, url: "https://kniffel.app", authority: true)
-      insert(:server, authority: false)
+      insert(:this_server)
+      insert(:server, url: "https://this.server", authority: true)
+      insert(:server)
       insert(:block)
+
+      this_server = Kniffel.Server.get_this_server()
 
       server_key = Kniffel.CryptoHelper.create_rsa_key()
 
       Kniffel.RequestMock
-      |> expect(:get, fn "https://tobiashoge.de/api/servers/this" ->
+      |> expect(:get, fn "https://kniffel.app/api/servers/this" ->
         {:ok,
          %{
            "server" => %{
              "id" => server_key.id,
-             "url" => "https://tobiashoge.de",
+             "url" => "https://kniffel.app",
              "public_key" => server_key.public_pem_string,
              "authority" => true
            }
@@ -92,37 +77,36 @@ defmodule Kniffel.ServerTest do
       end)
 
       Kniffel.RequestMock
-      |> expect(:post, fn "https://tobiashoge.de/api/servers",
-                          %{
-                            server: %{
-                              url: "http://hoge.cloud:3000"
-                            }
-                          } ->
-        {:ok, "Server already known."}
-      end)
+      |> expect(:post, 3, fn server_url, params ->
+        case {server_url, params} do
+          {"https://kniffel.app/api/servers",
+           %{
+             server: %{
+               url: "https://tobiashoge.de"
+             }
+           }} ->
+            {:ok, "Server already known."}
 
-      Kniffel.RequestMock
-      |> expect(:post, fn "https://kniffel.app/api/servers",
-                          %{
-                            server: %{
-                              url: "https://tobiashoge.de"
-                            }
-                          } ->
-        {:ok, "Server already known."}
-      end)
+          {"https://kniffel.app/api/servers",
+           %{
+             server: %{
+               url: "https://kniffel.app"
+             }
+           }} ->
+            {:ok, "Server already known."}
 
-      Kniffel.RequestMock
-      |> expect(:post, fn "https://tobiashoge.de/api/servers",
-                          %{
-                            server: %{
-                              url: "https://tobiashoge.de"
-                            }
-                          } ->
-        {:ok, "Server already known."}
+          {"https://this.server/api/servers",
+           %{
+             server: %{
+               url: "https://kniffel.app"
+             }
+           }} ->
+            {:ok, "Server already known."}
+        end
       end)
 
       Server.create_server(%{
-        "url" => "https://tobiashoge.de"
+        "url" => "https://kniffel.app"
       })
     end
   end

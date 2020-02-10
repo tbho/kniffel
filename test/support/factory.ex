@@ -1,6 +1,7 @@
 defmodule Kniffel.Factory do
   # with Ecto
   use ExMachina.Ecto, repo: Kniffel.Repo
+  import Mox
 
   @standard_password "Test123!"
 
@@ -61,6 +62,23 @@ defmodule Kniffel.Factory do
       public_key: server_key.public_pem_string,
       authority: false,
       id: server_key.id
+    }
+  end
+
+  def this_server_factory do
+    {:ok, private_key} = ExPublicKey.generate_key(4096)
+
+    Kniffel.CryptoMock
+    |> stub(:private_key, fn -> {:ok, private_key} end)
+
+    %{public_pem_string: public_pem_string, id: id} =
+      Kniffel.CryptoHelper.generate_fields_from_rsa_key(private_key)
+
+    %Kniffel.Server{
+      url: "https://tobiashoge.de",
+      public_key: public_pem_string,
+      authority: true,
+      id: id
     }
   end
 

@@ -6,32 +6,13 @@ defmodule Kniffel.UserTest do
   import Kniffel.Factory
   import Mox
 
-  def start_cache(_context) do
-    start_supervised(Kniffel.Cache)
+  def flush_cache(_context) do
+    Kniffel.Cache.flush()
     :ok
   end
 
-  def insert_this_server(_context) do
-    {:ok, private_key} = Kniffel.Blockchain.Crypto.private_key()
-    {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
-    {:ok, pem_string} = ExPublicKey.pem_encode(public_key)
-    id = ExPublicKey.RSAPublicKey.get_fingerprint(public_key)
-
-    %Kniffel.Server{}
-    |> Kniffel.Server.change_server(%{
-      "url" => System.get_env("URL"),
-      "public_key" => pem_string,
-      "authority" => false,
-      "id" => id
-    })
-    |> Repo.insert()
-
-    :ok
-  end
-
-  setup :start_cache
-  setup :insert_this_server
   setup :verify_on_exit!
+  setup :flush_cache
 
   describe "User.get_user_from_server" do
     test "request_ok user_inserted" do
@@ -71,7 +52,10 @@ defmodule Kniffel.UserTest do
 
   describe "User.create_user" do
     test "user_created" do
+      insert(:this_server)
       insert(:server)
+      # IO.inspect(Kniffel.Server.get_this_server())
+      # IO.inspect(Kniffel.Server.get_servers(false))
 
       Kniffel.RequestMock
       |> expect(:post, fn "https://test.de/api/users",
@@ -94,6 +78,7 @@ defmodule Kniffel.UserTest do
     end
 
     test "user_created with own private key" do
+      insert(:this_server)
       insert(:server)
 
       user_key = Kniffel.CryptoHelper.create_rsa_key()
