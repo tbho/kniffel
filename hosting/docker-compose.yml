@@ -10,7 +10,7 @@ services:
     restart: always
     env_file: ./app.env
     volumes:
-     - /kniffel.key:/kniffel.key
+     - /kniffel.d:/kniffel.d
 
   db:
     image: postgres:10.3-alpine

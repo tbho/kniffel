@@ -54,8 +54,6 @@ defmodule Kniffel.UserTest do
     test "user_created" do
       insert(:this_server)
       insert(:server)
-      # IO.inspect(Kniffel.Server.get_this_server())
-      # IO.inspect(Kniffel.Server.get_servers(false))
 
       Kniffel.RequestMock
       |> expect(:post, fn "https://test.de/api/users",

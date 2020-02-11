@@ -12,8 +12,6 @@ defmodule Kniffel.Server do
 
   @primary_key {:id, :string, autogenerate: false}
   @foreign_key_type :string
-
-  @server_white_list ["https://kniffel.app", "http://hoge.cloud:3000", "https://tobiashoge.de"]
   @http_client Application.get_env(:kniffel, :request)
   @crypto Application.get_env(:kniffel, :crypto)
 
@@ -36,7 +34,7 @@ defmodule Kniffel.Server do
       attrs
       |> Map.put("public_key", public_key_pem)
       |> Map.put("id", id)
-      |> Map.put("authority", url in @server_white_list)
+      |> Map.put("authority", url in Application.get_env(:kniffel, :server_white_list))
 
     cast_changeset(server, attrs)
   end

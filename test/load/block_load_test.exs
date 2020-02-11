@@ -693,12 +693,12 @@ defmodule Kniffel.LoadTest do
 
     {user_key, user} = insert_user()
     {_this_server_key, this_server} = create_this_server()
-    {server_key, server} = create_server(true) |> IO.inspect()
+    {server_key, server} = create_server(true)
 
     {:ok, genesis} = Kniffel.Blockchain.genesis()
     last_block = insert(:block, %{server_id: server.id, index: 1, pre_hash: genesis.hash})
 
-    server_age = Kniffel.Scheduler.ServerAge.get_server_age(true) |> IO.inspect()
+    server_age = Kniffel.Scheduler.ServerAge.get_server_age(true)
 
     Kniffel.Scheduler.RoundSpecification.set_round_specification(
       Kniffel.Scheduler.RoundSpecification.get_default_round_specification()

@@ -17,7 +17,7 @@ config :kniffel, Kniffel.Repo,
 # Configures the endpoint
 config :kniffel, KniffelWeb.Endpoint,
   http: [:inet6, port: 4000],
-  url: [host: "localhost"],
+  url: [host: System.get_env("URL")],
   render_errors: [view: KniffelWeb.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Kniffel.PubSub, adapter: Phoenix.PubSub.PG2]
 
@@ -42,7 +42,8 @@ config :kniffel,
 
 config :kniffel,
   block_transaction_limit: 10,
-  active_server_treshhold: 10
+  active_server_treshhold: 10,
+  server_white_list: ["https://kniffel.app", "http://hoge.cloud:3000", "https://tobiashoge.de"]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

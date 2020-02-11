@@ -17,8 +17,6 @@ import Ecto.Query, warn: false
 alias Kniffel.Request
 require Logger
 
-Logger.info("Running seed script...")
-
 {:ok, private_key} = Crypto.private_key()
 {:ok, public_key} = ExPublicKey.public_key_from_private_key(private_key)
 {:ok, pem_string} = ExPublicKey.pem_encode(public_key)
@@ -39,9 +37,7 @@ case Server.get_server(id) do
     |> Repo.insert()
 end
 
-url = "http://hoge.cloud:3000"
-url = "https://kniffel.app"
-
+url = System.get_env("MASTER_URL")
 from(s in Server, where: s.url == ^url, update: [set: [authority: true]])
 |> Repo.update_all([])
 

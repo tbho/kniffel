@@ -18,6 +18,7 @@ services:
       PRIV_KEY_PATH: "/kniffel.key"
       AES_KEY: "dev"
       URL: "http://hoge.cloud:3000"
+      MASTER_URL: "https://kniffel.app"
 
   assets:
     build:

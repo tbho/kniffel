@@ -12,12 +12,14 @@ services:
       - db
       - sync
     volumes:
-     - ./kniffel.key:/kniffel.key
+     - ./keys.d/:/keys.d
     environment:
       DATABASE_URL: "psql://kniffel:kniffel@db/kniffel"
-      PRIV_KEY_PATH: "/kniffel.key"
+      PRIV_KEY_PATH: "/keys.d/server.key"
       AES_KEY: "dev"
       URL: "http://hoge.cloud:3000"
+      MASTER_URL: "http://hoge.cloud:3000"
+      SECRET_KEY_BASE: vmOZLCImcoi+PBCMC/N6BnQ8t6LmSRyONqK3T0iNSV9hx2pt7502lV2mN2alVAFe
     ports:
       - "4000:4000"
 
