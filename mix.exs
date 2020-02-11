@@ -47,7 +47,7 @@ defmodule Kniffel.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:phoenix_slime, "~> 0.12.0"},
       {:ecto_enum, "~> 1.3"},
-      {:poison, "~> 3.1"},
+      {:poison, "~> 4.0"},
       {:rsa_ex, "~> 0.4"},
       {:ex_crypto, "~> 0.10.0"},
       # {:quantum, "~> 2.3"},
