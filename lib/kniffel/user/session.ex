@@ -165,7 +165,7 @@ defmodule Kniffel.User.Session do
     with {:ok, user} <-
            User
            |> Repo.get_by(user_name: user_name)
-           |> Comeonin.Argon2.check_pass(password),
+           |> Argon2.check_pass(password),
          {:ok, session} <-
            user
            |> Ecto.build_assoc(:sessions)

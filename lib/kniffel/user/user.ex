@@ -116,7 +116,7 @@ defmodule Kniffel.User do
   end
 
   defp put_pass_hash(%{valid?: true, changes: %{password: pw}} = changeset) do
-    change(changeset, Comeonin.Argon2.add_hash(pw))
+    change(changeset, Argon2.add_hash(pw))
   end
 
   defp put_pass_hash(changeset), do: changeset
@@ -200,5 +200,5 @@ defmodule Kniffel.User do
     }
   end
 
-  def json(user), do: nil
+  def json(_user), do: nil
 end

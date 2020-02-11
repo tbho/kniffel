@@ -17,7 +17,7 @@ config :kniffel, Kniffel.Repo,
 # Configures the endpoint
 config :kniffel, KniffelWeb.Endpoint,
   http: [:inet6, port: 4000],
-  url: [host: System.get_env("URL")],
+  url: [host: "localhost"],
   render_errors: [view: KniffelWeb.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Kniffel.PubSub, adapter: Phoenix.PubSub.PG2]
 

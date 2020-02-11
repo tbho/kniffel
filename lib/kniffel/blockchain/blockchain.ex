@@ -126,8 +126,6 @@ defmodule Kniffel.Blockchain do
          %ProposeResponse{} = propose_response <-
            ProposeResponse.verify(propose, propose_response),
          true <- propose_response.server_id == server.id do
-      propose_response
-
       results = Kniffel.Cache.get({:propose_response, block_index: propose.block_index}) || []
 
       Kniffel.Cache.set(

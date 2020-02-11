@@ -5,7 +5,7 @@ defmodule Kniffel.Request do
   def get(url), do: get(url, %{})
 
   @callback get(url :: String.t(), params :: Map.t()) :: {:ok, Map} | {:error, String.t()}
-  def get(url, params \\ %{}) do
+  def get(url, params) do
     HTTPoison.get(
       url,
       [

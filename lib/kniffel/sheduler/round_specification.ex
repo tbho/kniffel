@@ -134,7 +134,7 @@ defmodule Kniffel.Scheduler.RoundSpecification do
     round_specification_responses =
       Enum.reduce(servers, [], fn server, result ->
         with {:ok, %{"round_response" => round_response}} <-
-               @http_client.get(server.url <> "/api/sheduler/next_round") do
+               @http_client.get(server.url <> "/api/scheduler/next_round") do
           {:ok, round_begin} = Timex.parse(round_response["round_begin"], "{ISO:Extended}")
 
           case Timex.compare(Timex.now(), round_begin) do

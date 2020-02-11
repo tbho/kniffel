@@ -281,7 +281,7 @@ defmodule Kniffel.LoadTest do
       Kniffel.Scheduler.RoundSpecification.get_default_round_specification()
     )
 
-    {server_key, server} = create_server(true)
+    {_server_key, server} = create_server(true)
     {_this_server_key, _this_server} = create_this_server()
 
     block = insert(:block)
@@ -467,7 +467,7 @@ defmodule Kniffel.LoadTest do
       signature: signature
     }
 
-    stub(Kniffel.BlockchainMock, :commit_to_server, fn _server, block ->
+    stub(Kniffel.BlockchainMock, :commit_to_server, fn _server, _block ->
       nil
     end)
 
@@ -610,7 +610,7 @@ defmodule Kniffel.LoadTest do
       Kniffel.Scheduler.RoundSpecification.get_default_round_specification()
     )
 
-    server_age = Kniffel.Scheduler.ServerAge.get_server_age(true)
+    Kniffel.Scheduler.ServerAge.get_server_age(true)
 
     last_block = Kniffel.Blockchain.get_last_block()
 
@@ -698,7 +698,7 @@ defmodule Kniffel.LoadTest do
     {:ok, genesis} = Kniffel.Blockchain.genesis()
     last_block = insert(:block, %{server_id: server.id, index: 1, pre_hash: genesis.hash})
 
-    server_age = Kniffel.Scheduler.ServerAge.get_server_age(true)
+    Kniffel.Scheduler.ServerAge.get_server_age(true)
 
     Kniffel.Scheduler.RoundSpecification.set_round_specification(
       Kniffel.Scheduler.RoundSpecification.get_default_round_specification()

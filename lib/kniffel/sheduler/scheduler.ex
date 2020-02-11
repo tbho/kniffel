@@ -6,6 +6,7 @@ defmodule Kniffel.Scheduler do
   require Logger
 
   @http_client Application.get_env(:kniffel, :request)
+  @crypto Application.get_env(:kniffel, :crypto)
 
   def start_link(state) do
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
@@ -22,7 +23,7 @@ defmodule Kniffel.Scheduler do
   end
 
   def handle_event(:prepare_node) do
-    Logger.info("-# Prepare and start sheduler")
+    Logger.info("-# Prepare and start scheduler")
 
     with {:master, :ok} <- {:master, Server.add_this_server_to_master_server()},
          # add server to network
@@ -50,7 +51,7 @@ defmodule Kniffel.Scheduler do
       Process.send_after(Kniffel.Scheduler, :next_round, diff_milliseconds)
 
       Logger.info(
-        "-✓ Started sheduler successful! First round will start at: " <>
+        "-✓ Started scheduler successful! First round will start at: " <>
           Timex.format!(
             RoundSpecification.get_round_time(round_specification, :round_begin),
             "{ISO:Extended}"
@@ -61,21 +62,21 @@ defmodule Kniffel.Scheduler do
         Logger.debug(inspect(message))
 
         Logger.error(
-          "Error while preparing to start sheduler (add server to master_server network), repeating in 10 seconds again!"
+          "Error while preparing to start scheduler (add server to master_server network), repeating in 10 seconds again!"
         )
 
         Process.send_after(Kniffel.Scheduler, :prepare_node, 10_000)
 
       {reason, :error} ->
         Logger.error(
-          "Error while preparing to start sheduler (request #{inspect(reason)} data from network), repeating in 10 seconds again!"
+          "Error while preparing to start scheduler (request #{inspect(reason)} data from network), repeating in 10 seconds again!"
         )
 
         Process.send_after(Kniffel.Scheduler, :prepare_node, 10_000)
 
       {:error, :no_round_specification_in_cache} ->
         Logger.error(
-          "Error while preparing to start sheduler (no round_specification in cache), repeating in 10 seconds again!"
+          "Error while preparing to start scheduler (no round_specification in cache), repeating in 10 seconds again!"
         )
 
         Process.send_after(Kniffel.Scheduler, :prepare_node, 10_000)
@@ -271,7 +272,7 @@ defmodule Kniffel.Scheduler do
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
         response =
-          @http_client.post(server.url <> "/api/sheduler/cancel_block_propose", %{
+          @http_client.post(server.url <> "/api/scheduler/cancel_block_propose", %{
             cancel_block_propose: Map.put(data, :signature, signature),
             round_specification:
               RoundSpecification.get_round_specification() |> RoundSpecification.json()
@@ -330,7 +331,7 @@ defmodule Kniffel.Scheduler do
       Server.get_authorized_servers(false)
       |> Enum.map(fn server ->
         response =
-          @http_client.post(server.url <> "/api/sheduler/cancel_block_commit", %{
+          @http_client.post(server.url <> "/api/scheduler/cancel_block_commit", %{
             cancel_block_commit: Map.put(data, :signature, signature),
             round_specification:
               RoundSpecification.get_round_specification() |> RoundSpecification.json()

@@ -59,8 +59,6 @@ defmodule Kniffel.ServerTest do
       insert(:server)
       insert(:block)
 
-      this_server = Kniffel.Server.get_this_server()
-
       server_key = Kniffel.CryptoHelper.create_rsa_key()
 
       Kniffel.RequestMock
