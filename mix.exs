@@ -45,7 +45,7 @@ defmodule Kniffel.MixProject do
       {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
-      {:phoenix_slime, "~> 0.12.0"},
+      {:phoenix_slime, "~> 0.13.1"},
       {:ecto_enum, "~> 1.3"},
       {:poison, "~> 3.1"},
       {:rsa_ex, "~> 0.4"},
