@@ -1,5 +1,0 @@
-#! /usr/bin/env sh
-
-rsync -r -v --exclude-from=.rsyncignore -e ssh ~/dev/kniffel/ root@kniffel.app:/root/kniffel_dev
-
-# fswatch -o . | while read f; do rsync -r -v --exclude-from=.rsyncignore -e ssh ~/dev/kniffel/ root@kniffel.app:/root/kniffel_dev; done

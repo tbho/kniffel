@@ -19,6 +19,7 @@ services:
       AES_KEY: "dev"
       URL: "http://hoge.cloud:3000"
       MASTER_URL: "https://kniffel.app"
+      SECRET_KEY_BASE: SBoEjwgxdx7zkouWs/r0i496KgCWSNDpU34JccR3E3ZLQOMOBdv1Fh8LlmA5tKe5
 
   assets:
     build:
