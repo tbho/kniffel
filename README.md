@@ -1,7 +1,7 @@
 # Kniffel
 
 [![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=tbho/kniffel)](https://dependabot.com)
-[![Actions Status](https://github.com/tbho/kniffel/workflows/build/badge.svg)](https://github.com/tbho/kniffel/actions)
+[![Actions-Status](https://github.com/tbho/kniffel/workflows/publish-image/badge.svg)](https://github.com/tbho/kniffel/actions)
 
 ## Architecture
 
