@@ -150,10 +150,10 @@ defmodule Kniffel.Blockchain do
          {:transactions, false} <- {:transactions, Enum.empty?(transactions)},
          block_data_ids <- get_block_data_ids(),
          true <- Enum.all?(transactions, &(&1.id in block_data_ids)) do
-        Map.new()
-        |> Map.put(:propose, propose)
-        |> Map.put(:server, Server.get_this_server())
-        |> ProposeResponse.change()
+      Map.new()
+      |> Map.put(:propose, propose)
+      |> Map.put(:server, Server.get_this_server())
+      |> ProposeResponse.change()
     else
       {:transactions, true} ->
         Map.new()
@@ -241,7 +241,8 @@ defmodule Kniffel.Blockchain do
         pre_hash: last_block.hash
       }
 
-      {:ok, block} = %Block{}
+      {:ok, block} =
+        %Block{}
         |> Repo.preload([:server])
         |> Block.changeset_create(block_params)
         |> Repo.insert()

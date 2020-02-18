@@ -14,7 +14,6 @@ config :kniffel, :request, Kniffel.RequestMock
 config :kniffel, :crypto, Kniffel.CryptoMock
 config :kniffel, :round_endpoint, Kniffel.BlockchainMock
 
-
 config :kniffel,
   block_transaction_limit: 100,
   active_server_treshhold: 10,

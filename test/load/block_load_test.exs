@@ -96,7 +96,6 @@ defmodule Kniffel.LoadTest do
     {user_key, user}
   end
 
-  @tag  :wip
   @tag :load
   @tag timeout: :infinity
   test "benchmark_propose_to_server" do
@@ -172,7 +171,7 @@ defmodule Kniffel.LoadTest do
   @tag :load
   @tag timeout: :infinity
   test "benchmark_validate_block_proposal" do
-    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit) |> IO.inspect
+    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
 
     Kniffel.Scheduler.RoundSpecification.set_round_specification(
       Kniffel.Scheduler.RoundSpecification.get_default_round_specification()
@@ -274,8 +273,6 @@ defmodule Kniffel.LoadTest do
         timestamp: timestamp
       })
 
-      IO.inspect(Enum.count(Kniffel.Blockchain.get_transactions(%{})))
-
     stub(Kniffel.BlockchainMock, :propose_to_server, fn _server, propose ->
       propose_transactions_ids = Enum.map(propose.transactions, & &1.id)
 
@@ -296,7 +293,6 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag  :wip
   @tag :load
   @tag timeout: :infinity
   test "benchmark_commit_to_server" do
@@ -338,7 +334,7 @@ defmodule Kniffel.LoadTest do
   @tag :load
   @tag timeout: :infinity
   test "benchmark_validate_and_insert_block" do
-    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit) |> IO.inspect
+    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
 
     {server_key, server} = create_server(true)
     {_this_server_key, this_server} = create_this_server()
@@ -444,7 +440,7 @@ defmodule Kniffel.LoadTest do
   @tag :load
   @tag timeout: :infinity
   test "benchmark_commit_new_block" do
-    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit) |> IO.inspect
+    transaction_block_limit = Application.get_env(:kniffel, :block_transaction_limit)
 
     Kniffel.Scheduler.RoundSpecification.set_round_specification(
       Kniffel.Scheduler.RoundSpecification.get_default_round_specification()
@@ -523,7 +519,6 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag  :wip
   @tag :load
   @tag timeout: :infinity
   test "benchmark_finalize_to_server" do
@@ -620,7 +615,6 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag  :wip
   @tag :load
   @tag timeout: :infinity
   test "benchmark_finalize_block" do
@@ -711,7 +705,6 @@ defmodule Kniffel.LoadTest do
     )
   end
 
-  @tag  :wip
   @tag :load
   @tag timeout: :infinity
   test "benchmark_handle_height_change" do

@@ -78,13 +78,13 @@ defmodule Kniffel.Blockchain.Block do
   def hash_changeset(%Ecto.Changeset{} = changeset) do
     # pow_changeset("", changeset)
 
-    hash = changeset
-    |> take(@hash_fields)
-    |> Poison.encode!()
-    |> Crypto.hash()
+    hash =
+      changeset
+      |> take(@hash_fields)
+      |> Poison.encode!()
+      |> Crypto.hash()
 
-
-    put_change(changeset,:hash, hash)
+    put_change(changeset, :hash, hash)
   end
 
   # def pow_changeset(correct_hash = "00" <> _, %Ecto.Changeset{} = changeset) do
