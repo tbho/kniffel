@@ -14,5 +14,11 @@ config :kniffel, :request, Kniffel.RequestMock
 config :kniffel, :crypto, Kniffel.CryptoMock
 config :kniffel, :round_endpoint, Kniffel.BlockchainMock
 
+
+config :kniffel,
+  block_transaction_limit: 100,
+  active_server_treshhold: 10,
+  server_white_list: ["https://kniffel.app", "http://hoge.cloud:3000", "https://tobiashoge.de"]
+
 # Print only warnings and errors during test
 config :logger, level: :warn

@@ -33,12 +33,12 @@ defmodule Kniffel.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.4.11"},
+      {:phoenix, "~> 1.4.13"},
       {:phoenix_pubsub, "~> 1.1"},
       {:argon2_elixir, "~> 2.0"},
       {:comeonin, "~> 5.2.0"},
       {:phoenix_ecto, "~> 4.0"},
-      {:ecto_sql, "~> 3.1"},
+      {:ecto_sql, "~> 3.3.4"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 2.11"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
@@ -56,7 +56,7 @@ defmodule Kniffel.MixProject do
       {:timex, "~> 3.0"},
       {:mix_test_watch, "~> 1.0", only: :test},
       {:benchee, "~> 1.0", only: [:test, :dev]},
-      {:ex_machina, "~> 2.3", only: :test},
+      {:ex_machina, "~> 2.4", only: :test},
       {:mox, "~> 0.5", only: :test}
     ]
   end

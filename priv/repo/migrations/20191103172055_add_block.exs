@@ -10,7 +10,7 @@ defmodule Kniffel.Repo.Migrations.AddBlock do
       add :server_id, references(:server, type: :string)
       add :hash, :string
       add :signature, :string, size: 10000
-      add :data, :string, size: 1_000_000
+      add :data, :string, size: 10_485_760
     end
   end
 end

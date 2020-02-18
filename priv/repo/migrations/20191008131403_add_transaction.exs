@@ -5,7 +5,7 @@ defmodule Kniffel.Repo.Migrations.AddTransaction do
     create table("transaction", primary_key: false) do
       add :id, :uuid, primary_key: true
       add :timestamp, :string
-      add :data, :string, size: 1_000_000
+      add :data, :string, size: 10_485_760
       add :signature, :string, size: 10000
     end
   end

@@ -29,6 +29,7 @@ defmodule Kniffel.Blockchain.Crypto do
   @callback private_key() :: {:ok, ExPublicKey.RSAPrivateKey.t()} | {:error, Atom.t()}
   def private_key() do
     key_file_path = System.get_env("PRIV_KEY_PATH")
+
     case File.exists?(key_file_path) do
       false ->
         {:ok, private_key} = ExPublicKey.generate_key(4096)
@@ -36,6 +37,7 @@ defmodule Kniffel.Blockchain.Crypto do
 
         File.write(System.get_env("PRIV_KEY_PATH"), private_pem_string)
         {:ok, private_key}
+
       true ->
         ExPublicKey.load(key_file_path)
     end

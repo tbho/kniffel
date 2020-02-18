@@ -38,6 +38,7 @@ case Server.get_server(id) do
 end
 
 url = System.get_env("MASTER_URL")
+
 from(s in Server, where: s.url == ^url, update: [set: [authority: true]])
 |> Repo.update_all([])
 

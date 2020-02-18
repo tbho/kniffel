@@ -150,13 +150,10 @@ defmodule Kniffel.Blockchain do
          {:transactions, false} <- {:transactions, Enum.empty?(transactions)},
          block_data_ids <- get_block_data_ids(),
          true <- Enum.all?(transactions, &(&1.id in block_data_ids)) do
-      propose_response =
         Map.new()
         |> Map.put(:propose, propose)
         |> Map.put(:server, Server.get_this_server())
         |> ProposeResponse.change()
-
-      propose_response
     else
       {:transactions, true} ->
         Map.new()
@@ -244,8 +241,7 @@ defmodule Kniffel.Blockchain do
         pre_hash: last_block.hash
       }
 
-      {:ok, block} =
-        %Block{}
+      {:ok, block} = %Block{}
         |> Repo.preload([:server])
         |> Block.changeset_create(block_params)
         |> Repo.insert()
@@ -310,8 +306,8 @@ defmodule Kniffel.Blockchain do
               end
 
             nil ->
-              {:ok, %{body: %{transaction: transaction_params}}} =
-                HTTPoison.get(server.url <> "/api/transactions/#{transaction_params["id"]}")
+              {:ok, %{transaction: transaction_params}} =
+                @http_client.get(server.url <> "/api/transactions/#{transaction_params["id"]}")
 
               {:ok, transaction} = insert_transaction(transaction_params, server.url)
               transaction
