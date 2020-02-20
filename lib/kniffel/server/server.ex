@@ -184,7 +184,7 @@ defmodule Kniffel.Server do
 
   def add_this_server_to_master_server() do
     with %Server{} = this_server <- Server.get_this_server(),
-         %Server{} = master_server <- Server.get_server_by_url("http://hoge.cloud:3000"),
+         %Server{} = master_server <- Server.get_server_by_url(System.get_env("MASTER_URL")),
          {:ok, %{"server" => server}} <-
            @http_client.post(master_server.url <> "/api/servers", %{
              server: %{url: this_server.url}
