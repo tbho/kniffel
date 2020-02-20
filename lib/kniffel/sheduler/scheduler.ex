@@ -92,7 +92,6 @@ defmodule Kniffel.Scheduler do
 
     # do nothing if no other server in network
     if length(servers) > 0 do
-      # TODO: after n rounds calculate new round times
       server = Kniffel.Server.get_this_server()
 
       # if this server is oldest he is choosen for block creation
@@ -283,7 +282,7 @@ defmodule Kniffel.Scheduler do
             :ok
 
           other ->
-            IO.inspect(other)
+            Logger.errror(other)
         end
       end)
     end
@@ -342,7 +341,7 @@ defmodule Kniffel.Scheduler do
             :ok
 
           other ->
-            IO.inspect(other)
+            Logger.errror(other)
         end
       end)
     end
@@ -371,7 +370,6 @@ defmodule Kniffel.Scheduler do
         case reason do
           "no_transaction" ->
             # validate there a no transactions with timestamp before propose_start
-            # Kniffel.Blockchain.validate_no_transaction()
             :ok
 
           "timeout" ->
@@ -440,12 +438,12 @@ defmodule Kniffel.Scheduler do
       status =
         case reason do
           "timeout" ->
-            # compare DateTime.now() to round_times
             with %{round_number: round_number} <-
                    RoundSpecification.get_round_specification(),
                  true <- incoming_round_number >= round_number,
                  cancel_time <-
                    RoundSpecification.get_round_time(round_specification, :cancel_block_commit),
+                 # compare DateTime.now() to round_times
                  1 <- Timex.compare(Timex.now(), cancel_time) do
               :ok
             else

@@ -76,8 +76,6 @@ defmodule Kniffel.Blockchain.Block do
 
   @doc "Calculate and put the hash in the block"
   def hash_changeset(%Ecto.Changeset{} = changeset) do
-    # pow_changeset("", changeset)
-
     hash =
       changeset
       |> take(@hash_fields)
@@ -86,25 +84,6 @@ defmodule Kniffel.Blockchain.Block do
 
     put_change(changeset, :hash, hash)
   end
-
-  # def pow_changeset(correct_hash = "00" <> _, %Ecto.Changeset{} = changeset) do
-  #   put_change(changeset, :hash, correct_hash)
-  # end
-
-  # def pow_changeset(_, %Ecto.Changeset{} = changeset) do
-  #   {_, proof} = fetch_field(changeset, :proof)
-
-  #   changeset =
-  #     changeset
-  #     |> put_change(:proof, proof + 1)
-  #     |> put_change(:timestamp, Timex.now() |> Timex.format!("{ISO:Extended}"))
-
-  #   changeset
-  #   |> take(@hash_fields)
-  #   |> Poison.encode!()
-  #   |> Crypto.hash()
-  #   |> pow_changeset(changeset)
-  # end
 
   defp take(%Ecto.Changeset{} = changeset, fields) do
     Enum.reduce(fields, %{}, fn field, map ->
@@ -159,7 +138,6 @@ defmodule Kniffel.Blockchain.Block do
       pre_hash: block.pre_hash,
       proof: block.proof,
       data: Poison.decode!(block.data),
-      # data: %{"transactions" => transaction_data},
       hash: block.hash,
       signature: block.signature,
       timestamp: block.timestamp,

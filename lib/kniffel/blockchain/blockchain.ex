@@ -476,7 +476,6 @@ defmodule Kniffel.Blockchain do
         # ---------------------------
         # -- all responses are unique
         # ---------------------------
-        IO.inspect("-- all responses are unique")
 
         # get block with highest index and oldest timestamp from responses
         block_height = get_highest_and_oldest_block_height(block_height_responses)
@@ -487,17 +486,15 @@ defmodule Kniffel.Blockchain do
         # compare last block from this server to block with highest index and oldest timestamp from network
         with {:index, true} <- {:index, last_block.index == block_height["index"]},
              {:hash, true} <- {:hash, last_block.hash == block_height["hash"]} do
-          IO.inspect("blocks match")
           :ok
         else
           {:index, false} ->
             # if this index is higher, block is spread to network, otherwise block is requested
             if last_block.index > block_height["index"] do
-              IO.inspect("this block index is HIGHER! than network")
+              # this block index is HIGHER! than network
               send_block_to_server(block_height["server_id"], last_block)
             else
-              IO.inspect("this block index is LOWER! than network")
-
+              # this block index is LOWER! than network
               request_and_insert_block_from_server(
                 block_height["server_id"],
                 block_height["index"]
@@ -508,10 +505,10 @@ defmodule Kniffel.Blockchain do
             # if this index is equal but hash don't match the timestamp is checked
             # if this timestamp is older, block is spread to network, otherwise block is requested
             if last_block.timestamp < block_height["timestamp"] do
-              IO.inspect("this block timestamp is OLDER! than network")
+              # this block timestamp is OLDER! than network
               send_block_to_server(block_height["server_id"], last_block)
             else
-              IO.inspect("this block timestamp is HIGHER! than network")
+              # this block timestamp is HIGHER! than network
 
               request_and_insert_block_from_server(
                 block_height["server_id"],
@@ -523,7 +520,6 @@ defmodule Kniffel.Blockchain do
         # ---------------------------------------
         # -- a response with a count > 1 is found
         # ---------------------------------------
-        IO.inspect("-- a response with a count > 1 is found")
 
         # the response with the highest count is selected
         sort_block_heights = Enum.sort_by(grouped_block_height, &elem(&1, 1), &>=/2)
@@ -593,10 +589,7 @@ defmodule Kniffel.Blockchain do
       {:ok, last_block}
     else
       {:index, false} ->
-        IO.inspect("index is not right!")
-
         if last_block.index > index do
-          IO.inspect("last_block index is higher")
           # if last_block is higher delete blocks with higher index and
           # mark all transactions as not in block
           set_transaction_ids_to_nil_for_blocks_with_higher_index(index)
@@ -604,8 +597,6 @@ defmodule Kniffel.Blockchain do
 
           insert_block_from_network(block_params)
         else
-          IO.inspect("last_block index is lower")
-
           with :ok <- request_and_insert_block_from_server(server_id, index - 1) do
             insert_block_network(block_params)
           else
