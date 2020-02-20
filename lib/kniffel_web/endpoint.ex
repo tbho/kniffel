@@ -43,4 +43,28 @@ defmodule KniffelWeb.Endpoint do
     signing_salt: "THszJmjd"
 
   plug KniffelWeb.Router
+
+
+  @doc """
+  Callback invoked for dynamically configuring the endpoint.
+
+  It receives the endpoint configuration and checks if
+  configuration should be loaded from the system environment.
+  """
+  @spec init(atom, Keyword.t()) :: {:ok, Keyword.t()} | no_return
+  def init(_key, config) do
+    if config[:load_from_system_env] do
+      secret_key_base =
+        System.get_env("SECRET_KEY_BASE") ||
+          raise("expected the SECRET_KEY_BASE environment variable to be set")
+
+      config =
+        config
+        |> Keyword.put(:secret_key_base, secret_key_base)
+
+      {:ok, config}
+    else
+      {:ok, config}
+    end
+  end
 end

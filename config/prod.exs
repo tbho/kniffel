@@ -10,9 +10,9 @@ use Mix.Config
 # which you should run after static files are built and
 # before starting your production server.
 config :kniffel, KniffelWeb.Endpoint,
+  load_from_system_env: true,
   cache_static_manifest: "priv/static/cache_manifest.json",
-  server: true,
-  secret_key_base: System.get_env("SECRET_KEY_BASE")
+  server: true
 
 # Do not print debug messages in production
 config :logger, level: :info

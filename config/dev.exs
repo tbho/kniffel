@@ -18,10 +18,7 @@ config :kniffel, KniffelWeb.Endpoint,
   debug_errors: true,
   code_reloader: true,
   check_origin: false,
-  watchers: []
-
-# Watch static and templates for browser reloading.
-config :kniffel, KniffelWeb.Endpoint,
+  watchers: [],
   live_reload: [
     patterns: [
       ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
@@ -31,6 +28,7 @@ config :kniffel, KniffelWeb.Endpoint,
     ]
   ],
   secret_key_base: "5HjSFjyGix751ubR/igyrzbfby3NsOc2Dn4DxldR4hpoqKIa3YEosx3psppajJRw"
+
 
 config :slime, :keep_lines, true
 
