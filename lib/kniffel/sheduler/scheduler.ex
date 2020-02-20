@@ -282,7 +282,7 @@ defmodule Kniffel.Scheduler do
             :ok
 
           other ->
-            Logger.errror(other)
+            Logger.error(other)
         end
       end)
     end
@@ -341,7 +341,7 @@ defmodule Kniffel.Scheduler do
             :ok
 
           other ->
-            Logger.errror(other)
+            Logger.error(other)
         end
       end)
     end
