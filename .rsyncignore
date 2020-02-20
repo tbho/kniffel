@@ -1,6 +1,0 @@
-docker-compose.user.yml
-docker-compose.development.yml
-_build
-assets/node_modules
-deps
-.git
