@@ -36,7 +36,7 @@ defmodule Kniffel.MixProject do
       {:phoenix, "~> 1.4.13"},
       {:phoenix_pubsub, "~> 1.1"},
       {:argon2_elixir, "~> 2.0"},
-      {:comeonin, "~> 5.2.0"},
+      {:comeonin, "~> 5.3.1"},
       {:phoenix_ecto, "~> 4.0"},
       {:ecto_sql, "~> 3.3.4"},
       {:postgrex, ">= 0.0.0"},
